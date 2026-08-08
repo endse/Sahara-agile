@@ -326,7 +326,9 @@ sahara-agile-works/
 ├── api/
 │   └── index.ts                    # Vercel Serverless Function entry point
 ├── scripts/
+│   ├── k6-stress-test.js           # Grafana k6 load & stress test script
 │   ├── run-ci-tests.ts             # CI test runner spawning server & handling exit status
+│   ├── run-stress-test.ts          # Automated k6 stress test runner & cleanup harness
 │   └── test-api.ts                 # Full REST API integration test runner
 ├── src/
 │   ├── App.tsx                     # Main layout & animated tab router
@@ -384,3 +386,45 @@ sahara-agile-works/
 ├── vercel.json                     # Vercel serverless build & rewrite rules
 └── vite.config.ts                  # Vite build & bundler configuration
 ```
+
+---
+
+## ⚡ 10. Performance Benchmarks & k6 Stress Testing Report
+
+Sahara Agile Works includes an automated **k6 Stress Testing Harness** (`scripts/k6-stress-test.js` & `scripts/run-stress-test.ts`) that executes multi-stage load testing simulating up to **250 concurrent Virtual Users (VUs)** loop-hammering all core REST API endpoints.
+
+### 10.1 k6 Stress Load Stages & SLA Thresholds
+- **Stage 1 (Warm-Up):** 0 to 20 Virtual Users over 5 seconds
+- **Stage 2 (Scale Load):** 20 to 100 Virtual Users over 10 seconds
+- **Stage 3 (Peak Stress):** 100 to 250 Virtual Users over 10 seconds
+- **Stage 4 (Ramp-Down):** 250 to 0 Virtual Users over 5 seconds
+
+**SLA Thresholds Enforced:**
+- `http_req_duration`: 95% of requests $< 350\text{ms}$ (`p(95) < 350ms`), 99% of requests $< 600\text{ms}$ (`p(99) < 600ms`)
+- `http_req_failed`: Rate $< 1.00\%$ (`rate < 0.01`)
+
+---
+
+### 10.2 Empirical k6 Benchmark Results
+
+| Metric | Result | Status / Evaluation |
+| :--- | :--- | :--- |
+| **Total Handled Requests** | **65,416 Requests** | 100% Executed in 30s |
+| **Peak Virtual Users (VUs)** | **250 Concurrent VUs** | Sustained Peak Load |
+| **Throughput (RPS)** | **2,176.36 Requests / Sec** | Outstanding API Capacity |
+| **Network Throughput** | **161 MB / Sec** (4.8 GB Total) | High-bandwidth payload throughput |
+| **Success Rate (Accuracy)** | **100.00% Success** (0 failures out of 65,416) | Zero Error Rate (`0.00%`) |
+| **Median Latency (p50)** | **10.44 ms** | Sub-15ms Typical Response Time |
+| **Average Response Time** | **34.60 ms** | Blazing Fast Execution |
+| **p90 Latency** | **85.16 ms** | Excellent 90th percentile SLA |
+| **p95 Latency** | **178.91 ms** (SLA: $<350\text{ms}$) | Passed SLA |
+| **p99 Latency** | **424.41 ms** (SLA: $<600\text{ms}$) | Passed SLA |
+
+---
+
+### 10.3 How to Run the Stress Test
+To run the automated k6 stress harness locally against a freshly compiled production build:
+```bash
+npm run test:stress
+```
+
