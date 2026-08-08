@@ -232,10 +232,10 @@ If a job continuously fails after exhausting maximum allowed attempts ($\ge 3$),
 Automated pipeline running on `push` and `pull_request` to `main` and `master`:
 1. **`lint-test-build` Job:**
    - **Type Checking:** Runs `npm run lint` (`tsc --noEmit`) for strict TypeScript safety.
-   - **Unit Testing:** Executes `vitest run` across 5 test suites (33 tests).
-   - **Integration Testing:** Executes `scripts/run-ci-tests.ts` which compiles builds, boots the Express backend on port 3000, runs REST integration tests, and cleans up.
+   - **Unit & REST API Testing:** Executes `vitest run` across 5 test suites (33 tests) and `scripts/run-ci-tests.ts`.
+   - **Playwright End-to-End (E2E) Testing:** Installs Chromium dependencies (`npx playwright install --with-deps chromium`) and runs `npm run test:e2e` across 7 browser test specs.
    - **Production Bundling:** Compiles client Vite SPA and Express Node CJS bundle (`npm run build`).
-   - **Artifact Upload:** Uploads `dist/` bundle to GitHub Actions artifact storage.
+   - **Artifact Upload:** Uploads `dist/` bundle and `playwright-report/` artifacts to GitHub Actions storage.
 2. **`deploy` Job:**
    - Downloads compiled production artifacts.
    - Verifies bundle integrity (`dist/index.html`, `dist/server.cjs`).
@@ -271,7 +271,14 @@ Compiles build, boots server on port 3000, runs unit tests, runs REST API tests,
 npm test
 ```
 
-### 5. Build for Production
+### 5. Run Playwright End-to-End (E2E) Browser Tests
+Auto-boots production server on port 3000 and runs 7 Playwright browser tests across Chromium:
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+### 6. Build & Run Production Server
 ```bash
 npm run build
 npm start

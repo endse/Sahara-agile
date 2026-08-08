@@ -12,6 +12,8 @@
     "test:unit": "vitest run",
     "test:api": "tsx scripts/test-api.ts",
     "test:stress": "npm run build && tsx scripts/run-stress-test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
@@ -33,6 +35,7 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
