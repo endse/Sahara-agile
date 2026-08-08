@@ -435,3 +435,14 @@ To run the automated k6 stress harness locally against a freshly compiled produc
 npm run test:stress
 ```
 
+---
+
+## 👤 Author
+
+**Chirag Yadav**
+- **Project:** Sahara Agile Works
+- **Role:** Lead Architect & Software Engineer
+- **Repository:** Full-Stack Employee Tracking & Agile Management Platform
+
+
+
