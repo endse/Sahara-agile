@@ -9,9 +9,9 @@ test.describe('Agile Kanban Task Board Specs', () => {
   test('renders Kanban status columns and task items', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /Task Board|Kanban/i }).first()).toBeVisible();
 
-    // Verify Kanban status columns exist
-    await expect(page.getByText(/In Progress/i).first()).toBeVisible();
-    await expect(page.getByText(/Review/i).first()).toBeVisible();
+    // Verify Kanban status column headers exist
+    await expect(page.getByRole('heading', { name: 'In Progress' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
   });
 
   test('displays deadline alerts widget on task board or header', async ({ page }) => {
