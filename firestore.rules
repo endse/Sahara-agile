@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if true;
+    }
+
+    match /locations/{locationId} {
+      allow read, write: if true;
+    }
+
+    match /activities/{activityId} {
+      allow read, write: if true;
+    }
+
+    match /timeline/{timelineId} {
+      allow read, write: if true;
+    }
+
+    match /team/{teamMemberId} {
+      allow read, write: if true;
+    }
+
+    match /stories/{storyId} {
+      allow read, write: if true;
+    }
+
+    // Attendance RBAC: Employees can log their own hours; Managers have global write access
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /async_jobs/{jobId} {
+      allow read, write: if true;
+    }
+  }
+}

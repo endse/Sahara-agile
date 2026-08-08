@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "Registered user accounts and field operator profiles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "tasks": {
+      "title": "Tasks",
+      "description": "Agile Kanban tasks and field missions",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "tags": { "type": "array" },
+        "progress": { "type": "number" },
+        "assignee": { "type": "object" },
+        "location": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "status", "priority"]
+    },
+    "locations": {
+      "title": "Locations",
+      "description": "Field operation sites and project locations",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "region": { "type": "string" },
+        "status": { "type": "string" },
+        "taskCount": { "type": "number" },
+        "crewCount": { "type": "number" },
+        "lead": { "type": "string" },
+        "temperature": { "type": "string" },
+        "coordinates": { "type": "object" }
+      },
+      "required": ["name", "region", "status"]
+    },
+    "activities": {
+      "title": "Activities",
+      "description": "Live telemetry and operational activity log",
+      "type": "object",
+      "properties": {
+        "user": { "type": "string" },
+        "avatar": { "type": "string" },
+        "action": { "type": "string" },
+        "target": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string" },
+        "detail": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["user", "action", "target"]
+    },
+    "timeline": {
+      "title": "Timeline",
+      "description": "Master schedule milestones and operational phases",
+      "type": "object",
+      "properties": {
+        "phase": { "type": "string" },
+        "title": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string" },
+        "progress": { "type": "number" },
+        "lead": { "type": "string" },
+        "region": { "type": "string" }
+      },
+      "required": ["phase", "title", "status"]
+    },
+    "team": {
+      "title": "Team",
+      "description": "Field operators and team members",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "region": { "type": "string" },
+        "avatar": { "type": "string" },
+        "status": { "type": "string" },
+        "taskCount": { "type": "number" },
+        "activeLocation": { "type": "string" }
+      },
+      "required": ["name", "role"]
+    },
+    "stories": {
+      "title": "User Stories",
+      "description": "Agile User Stories grouped by Project",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "points": { "type": "number" },
+        "status": { "type": "string" },
+        "assigneeName": { "type": "string" },
+        "acceptanceCriteria": { "type": "array" }
+      },
+      "required": ["projectId", "title", "status"]
+    },
+    "attendance": {
+      "title": "Attendance & Work Logs",
+      "description": "Employee clock-in/clock-out tracking and work hours",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "clockInTime": { "type": "string" },
+        "clockOutTime": { "type": "string" },
+        "totalHours": { "type": "number" },
+        "status": { "type": "string" },
+        "workNotes": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["userId", "userName", "clockInTime", "status"]
+    },
+    "async_jobs": {
+      "title": "Asynchronous Processing Jobs",
+      "description": "Background jobs for report generation, notifications, and telemetry audits",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "progress": { "type": "number" },
+        "resultSummary": { "type": "string" },
+        "retryCount": { "type": "number" },
+        "errorReason": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "type", "status"]
+    }
+  }
+}
