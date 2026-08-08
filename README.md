@@ -209,6 +209,69 @@ Base URL: `http://localhost:3000`
 
 ---
 
+## ⚙️ Background Job Queue Architecture, Exponential Backoff & Dead Letter Queue (DLQ)
+
+Sahara Agile Works incorporates a production-grade **Background Job Queue System** modeled after Redis / BullMQ architecture patterns (`src/services/jobQueueService.ts`).
+
+### 1. Architectural System Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cron as Midnight Scheduler / User UI
+    participant Producer as Job Queue Producer
+    participant Queue as Redis Queue (Waiting / Active)
+    participant Worker as Background Worker Processor
+    participant Service as Productivity Report Service
+    participant DLQ as Dead Letter Queue (DLQ)
+    participant Email as Email Dispatcher
+
+    Cron->>Producer: Enqueue 'midnight_productivity_report'
+    Producer->>Queue: Add Job (state: 'waiting', attempts: 3)
+    Queue->>Worker: Dequeue Next Job (state: 'active')
+    Worker->>Service: Aggregate Shift Hours & Sprint Velocity
+    
+    alt Successful Execution
+        Service-->>Worker: Productivity & Velocity Report
+        Worker->>Email: Dispatch Report to amara.vance@sahara.io
+        Worker->>Queue: State ➔ 'completed' (progress: 100%)
+    else Simulated SatCom Network Failure
+        Service--xWorker: Error 504 Gateway Timeout
+        alt Retries < Max Attempts (3)
+            Worker->>Worker: Calculate Exponential Backoff Delay = Base * 2^retryCount
+            Worker->>Queue: Re-schedule (state: 'failed', nextRetryAt)
+        else Retries >= Max Attempts
+            Worker->>DLQ: Route Job to Dead Letter Queue (state: 'dlq')
+            DLQ-->>Cron: Operational Alert Logged
+        end
+    end
+```
+
+### 2. Exponential Backoff Retry Strategy
+When network glitches or telemetry service timeouts occur, jobs enter a retry phase calculated using exponential backoff:
+$$\text{Delay} = \text{BaseMs} \times 2^{\text{retryCount}}$$
+- **Attempt 1:** Immediate retry ($0\text{s}$)
+- **Attempt 2:** $1.0\text{s}$ delay
+- **Attempt 3:** $2.0\text{s}$ delay
+- **Attempt 4:** $4.0\text{s}$ delay
+
+### 3. Dead Letter Queue (DLQ) Management
+If a job continuously fails after exhausting maximum allowed attempts ($\ge 3$), it is automatically moved out of the active queue and into the **Dead Letter Queue (DLQ)**.
+- **Diagnostics:** Preserves original error logs, attempt history, and snapshot payload.
+- **Manual Recovery:** Operators can inspect DLQ items via the UI dashboard or `/api/queue/dlq` REST API and invoke `POST /api/queue/dlq/:id/retry` to re-queue jobs without data loss.
+
+### 4. Queue Management REST API Reference
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/queue/stats` | `GET` | Retrieve queue state metrics (`waiting`, `active`, `completed`, `failed`, `dlq`) |
+| `/api/queue/jobs` | `GET` | List all current queued and historical background jobs |
+| `/api/queue/trigger-midnight` | `POST` | Enqueue midnight productivity & sprint velocity report job |
+| `/api/queue/dlq` | `GET` | List all items currently routed to the Dead Letter Queue |
+| `/api/queue/dlq/:id/retry` | `POST` | Move failed job from DLQ back to active queue for re-processing |
+| `/api/queue/report/latest` | `GET` | Fetch latest generated productivity & sprint velocity report |
+
+---
+
 ## ⚡ Asynchronous Workflow & Failure/Retry Design
 
 1. **Queueing Pattern:**

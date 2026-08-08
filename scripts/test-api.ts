@@ -191,6 +191,28 @@ async function runTests() {
     const jobId = newJob.body.data?.id;
     console.log(`   ✅ POST /api/async-jobs 202 | Created Job ID: ${jobId}`);
 
+    // 9. Redis Pattern Job Queue & DLQ REST API
+    console.log('\n9️⃣ Testing Redis Background Queue & DLQ API (/api/queue/*)');
+    const statsRes = await request('/api/queue/stats');
+    assert(statsRes.status === 200, `GET /api/queue/stats expected 200, got ${statsRes.status}`);
+    assert(typeof statsRes.body.data?.waiting === 'number', 'Queue stats should include waiting count');
+    console.log(`   ✅ GET /api/queue/stats 200 | Total Jobs: ${statsRes.body.data?.totalJobs} | DLQ: ${statsRes.body.data?.dlq}`);
+
+    const triggerRes = await request('/api/queue/trigger-midnight', 'POST', { shouldFailSimulated: false }, cookieHeader);
+    assert(triggerRes.status === 202, `POST /api/queue/trigger-midnight expected 202, got ${triggerRes.status}`);
+    assert(triggerRes.body.data?.name === 'midnight_productivity_report', 'Job name should match midnight report');
+    console.log(`   ✅ POST /api/queue/trigger-midnight 202 | Enqueued Job ID: ${triggerRes.body.data?.id}`);
+
+    const dlqRes = await request('/api/queue/dlq');
+    assert(dlqRes.status === 200, `GET /api/queue/dlq expected 200, got ${dlqRes.status}`);
+    assert(Array.isArray(dlqRes.body.data), 'DLQ should return an array');
+    console.log(`   ✅ GET /api/queue/dlq 200 | Count in DLQ: ${dlqRes.body.count}`);
+
+    const reportRes = await request('/api/queue/report/latest');
+    assert(reportRes.status === 200, `GET /api/queue/report/latest expected 200, got ${reportRes.status}`);
+    assert(reportRes.body.data?.recipientEmail === 'amara.vance@sahara.io', 'Report recipient should be Amara Vance');
+    console.log(`   ✅ GET /api/queue/report/latest 200 | Recipient: ${reportRes.body.data?.recipientEmail}`);
+
     console.log('\n🎉 ALL REST API INTEGRATION TESTS PASSED CLEANLY!\n');
   } catch (error) {
     console.error('\n❌ API Integration Suite Failed:', error);

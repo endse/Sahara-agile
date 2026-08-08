@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
+import { globalJobQueue } from './src/services/jobQueueService';
 
 const app = express();
 const PORT = 3000;
@@ -422,6 +423,58 @@ app.post('/api/async-jobs', authenticateJwt, (req, res) => {
   }, 3000);
 
   res.status(202).json({ success: true, message: 'Job accepted for background execution', data: newJob });
+});
+
+// --- REDIS BACKGROUND JOB QUEUE & DLQ REST API ENDPOINTS ---
+
+// Get Queue Statistics & Worker Health
+app.get('/api/queue/stats', (req, res) => {
+  res.json({ success: true, data: globalJobQueue.getStats() });
+});
+
+// List all jobs in queue
+app.get('/api/queue/jobs', (req, res) => {
+  res.json({ success: true, count: globalJobQueue.getAllJobs().length, data: globalJobQueue.getAllJobs() });
+});
+
+// Trigger Midnight Productivity & Sprint Velocity Job
+app.post('/api/queue/trigger-midnight', authenticateJwt, (req, res) => {
+  const { shouldFailSimulated } = req.body || {};
+  const job = globalJobQueue.triggerMidnightReportJob(shouldFailSimulated);
+  res.status(202).json({
+    success: true,
+    message: 'Midnight Productivity & Sprint Velocity Job enqueued successfully in Redis pattern Queue',
+    data: job,
+  });
+});
+
+// Get Dead Letter Queue (DLQ) Items
+app.get('/api/queue/dlq', (req, res) => {
+  const dlqJobs = globalJobQueue.getDlqJobs();
+  res.json({ success: true, count: dlqJobs.length, data: dlqJobs });
+});
+
+// Re-queue Failed Job from Dead Letter Queue (DLQ)
+app.post('/api/queue/dlq/:id/retry', authenticateJwt, (req, res) => {
+  const jobId = req.params.id;
+  const requeued = globalJobQueue.retryDlqJob(jobId);
+  if (!requeued) {
+    return res.status(404).json({ success: false, error: `Job '${jobId}' not found in Dead Letter Queue (DLQ)` });
+  }
+  res.json({
+    success: true,
+    message: `Job '${jobId}' moved from DLQ back to active queue for re-processing`,
+    data: requeued,
+  });
+});
+
+// Get Latest Generated Productivity & Velocity Report
+app.get('/api/queue/report/latest', (req, res) => {
+  const report = globalJobQueue.getLatestReport();
+  if (!report) {
+    return res.status(404).json({ success: false, error: 'No generated productivity report available' });
+  }
+  res.json({ success: true, data: report });
 });
 
 // --- VITE MIDDLEWARE & STATIC SERVING ---
