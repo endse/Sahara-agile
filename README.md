@@ -296,7 +296,27 @@ vercel --prod
 
 ---
 
-## 📁 8. Repository Directory Layout
+## 🧠 8. Design Decisions & Tradeoffs
+
+1. **Full-Stack Hybrid Architecture (Express REST Server + React Vite SPA + Firebase Firestore):**
+   - *Decision:* Combine an Express Node.js backend for programmatic REST APIs and background worker processing with real-time Firebase Firestore `onSnapshot` listeners for reactive client UI state.
+   - *Tradeoff:* Requires maintaining dual data paths (Express REST response shapes and Firestore client documents), but delivers maximum flexibility for programmatic script integration alongside instantaneous reactive UI updates.
+
+2. **Redis-Pattern Queue Engine with In-Memory Resilience Adapter:**
+   - *Decision:* Build a BullMQ/Redis compatible job queue service with fallback to an in-memory queue processor when external Redis is unconfigured.
+   - *Tradeoff:* Enables 100% out-of-the-box local and CI execution without external Redis daemon setup, while maintaining strict BullMQ state transition semantics (`waiting` ➔ `active` ➔ `completed` / `failed` ➔ `dlq`) and exponential backoff retry math.
+
+3. **HttpOnly Cookie JWT Authentication over LocalStorage:**
+   - *Decision:* Store JWT session tokens in secure, HttpOnly, SameSite=Lax cookies rather than client-accessible localStorage.
+   - *Tradeoff:* Eliminates XSS token theft vectors and secures session state across browser tabs, but requires CORS/credentials handling configuration for cross-origin deployment.
+
+4. **Single-Page Tabbed Motion Navigation vs Multi-Page Router:**
+   - *Decision:* Utilize Framer Motion / AnimatePresence tab-based screen navigation for instant 60fps screen transitions without full page reloads.
+   - *Tradeoff:* Browser back button navigates browser history rather than internal app tabs unless hash/query parameters are mapped to active screen state.
+
+---
+
+## 📁 9. Repository Directory Layout
 
 ```
 sahara-agile-works/
