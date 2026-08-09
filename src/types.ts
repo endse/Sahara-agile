@@ -43,6 +43,17 @@ export interface NavigationState {
   transition: TransitionType;
 }
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  url: string;
+  size?: number;
+  type: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  storagePath?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -69,6 +80,7 @@ export interface Task {
   pendingStatus?: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
   statusRequestedBy?: string;
   statusRequestedAt?: string;
+  attachments?: TaskAttachment[];
 }
 
 export interface UserStory {
@@ -164,6 +176,9 @@ export interface TimelineMilestone {
   progress: number;
   lead: string;
   region: string;
+  assignedMemberIds?: string[];
+  description?: string;
+  budget?: string;
 }
 
 export interface TeamInvitation {
@@ -194,4 +209,5 @@ export interface SiteLocation {
   humidity?: string;
   windSpeed?: string;
   uvIndex?: string;
+  assignedMemberIds?: string[];
 }

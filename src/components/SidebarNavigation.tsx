@@ -7,22 +7,21 @@ interface SidebarProps {
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
-  onOpenWalkthrough?: () => void;
 }
 
-export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNavigate, isOpenMobile, onCloseMobile, onOpenWalkthrough }) => {
+export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNavigate, isOpenMobile, onCloseMobile }) => {
   const { user, userProfile, activeRole, switchActiveRole, signOutUser } = useAuth();
 
   const navItems = [
     { id: 'Dashboard' as ScreenId, label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
-    { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics & Graphs', icon: 'insights', isManagerOnly: false },
-    { id: 'TaskBoard' as ScreenId, label: 'Task Board', icon: 'view_kanban', isManagerOnly: false },
-    { id: 'UserStories' as ScreenId, label: 'User Stories', icon: 'auto_stories', isManagerOnly: true },
-    { id: 'ProjectTimeline' as ScreenId, label: 'Project Timeline', icon: 'timeline', isManagerOnly: false },
-    { id: 'ProjectMap' as ScreenId, label: 'Project Map', icon: 'map', isManagerOnly: false },
-    { id: 'TeamSync' as ScreenId, label: 'Team Sync', icon: 'groups', isManagerOnly: false },
-    { id: 'AttendanceLog' as ScreenId, label: 'Attendance & Clock', icon: 'schedule', isManagerOnly: false },
-    { id: 'AsyncReports' as ScreenId, label: 'Async Reports', icon: 'memory', isManagerOnly: true },
+    { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics', icon: 'insights', isManagerOnly: false },
+    { id: 'TaskBoard' as ScreenId, label: 'Tasks', icon: 'view_kanban', isManagerOnly: false },
+    { id: 'UserStories' as ScreenId, label: 'Stories', icon: 'auto_stories', isManagerOnly: true },
+    { id: 'ProjectTimeline' as ScreenId, label: 'Timeline', icon: 'timeline', isManagerOnly: false },
+    { id: 'ProjectMap' as ScreenId, label: 'Map', icon: 'map', isManagerOnly: false },
+    { id: 'TeamSync' as ScreenId, label: 'Team', icon: 'groups', isManagerOnly: false },
+    { id: 'AttendanceLog' as ScreenId, label: 'Attendance', icon: 'schedule', isManagerOnly: false },
+    { id: 'AsyncReports' as ScreenId, label: 'Reports', icon: 'memory', isManagerOnly: true },
   ];
 
   const handleNavClick = (screen: ScreenId) => {
@@ -46,7 +45,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
               </div>
               <div>
                 <h1 className="font-headline text-2xl font-semibold text-[#3D3028] leading-none tracking-tight">Sahara</h1>
-                <span className="text-[10px] tracking-widest font-semibold uppercase text-[#8B5E3C]">Agile Workspace</span>
+                <span className="text-[10px] tracking-widest font-semibold uppercase text-[#8B5E3C]">Workspace</span>
               </div>
             </div>
             {onCloseMobile && (

@@ -9,9 +9,11 @@ interface TopHeaderProps {
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
   onOpenMobileMenu?: () => void;
   onOpenSecurityModal?: () => void;
-  onOpenWalkthrough?: () => void;
   tasks?: Task[];
+  allTasks?: Task[];
   onSelectTask?: (task: Task) => void;
+  onApproveTaskStatus?: (taskId: string) => void;
+  onRejectTaskStatus?: (taskId: string) => void;
   rightActions?: React.ReactNode;
   managedSector?: string;
   onSelectManagedSector?: (sector: string) => void;
@@ -23,9 +25,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onNavigate,
   onOpenMobileMenu,
   onOpenSecurityModal,
-  onOpenWalkthrough,
   tasks = [],
+  allTasks = tasks,
   onSelectTask,
+  onApproveTaskStatus,
+  onRejectTaskStatus,
   rightActions,
   managedSector = 'All Teams',
   onSelectManagedSector
@@ -34,6 +38,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
 
   const nearingItems = getNearingDeadlineTasks(tasks);
+  const pendingApprovals = allTasks.filter((t) => t.approvalStatus === 'pending_approval');
+  const totalNotifications = nearingItems.length + (activeRole === 'Manager' ? pendingApprovals.length : 0);
 
   return (
     <header className="sticky top-0 z-30 bg-[#FDF8F3]/90 backdrop-blur-md border-b border-[#E5D5C0] px-4 lg:px-8 py-4 flex items-center justify-between gap-4">
@@ -62,17 +68,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <button
             onClick={() => setIsAlertsOpen(!isAlertsOpen)}
             className={`p-2 rounded-full transition-all relative flex items-center justify-center ${
-              nearingItems.length > 0
+              totalNotifications > 0
                 ? 'bg-amber-500/20 text-amber-900 border border-amber-500/40 hover:bg-amber-500/30'
                 : 'text-[#5C4D42] hover:bg-[#F3E9DC]'
             }`}
-            title={`${nearingItems.length} tasks nearing deadline`}
+            title={`${totalNotifications} active notifications`}
           >
             <span className="material-symbols-outlined text-xl">notifications</span>
-            {nearingItems.length > 0 && (
+            {totalNotifications > 0 && (
               <>
                 <span className="absolute -top-1 -right-1 bg-yellow-400 text-stone-950 font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center border border-yellow-600 shadow-xs">
-                  {nearingItems.length}
+                  {totalNotifications}
                 </span>
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
               </>
@@ -85,53 +91,118 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-amber-400 text-lg">notifications_active</span>
-                  <h4 className="font-bold text-sm text-white">Deadline Alerts Summary</h4>
+                  <h4 className="font-bold text-sm text-white">Notifications & Approvals</h4>
                 </div>
                 <span className="bg-amber-400 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {nearingItems.length} Alerts
+                  {totalNotifications} Items
                 </span>
               </div>
 
-              {nearingItems.length === 0 ? (
+              {/* Manager Pending Approvals Section */}
+              {activeRole === 'Manager' && pendingApprovals.length > 0 && (
+                <div className="space-y-2 border-b border-white/10 pb-3">
+                  <div className="flex items-center justify-between text-xs text-amber-400 font-bold">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">rate_review</span>
+                      <span>Pending Task Approvals ({pendingApprovals.length})</span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                    {pendingApprovals.map((task) => (
+                      <div
+                        key={task.id}
+                        className="p-2.5 bg-[#2A1E17] border border-amber-500/30 rounded-xl space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-700">
+                            {task.code}
+                          </span>
+                          <span className="text-[10px] bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-full uppercase">
+                            Req: {task.pendingStatus?.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <h5 className="font-semibold text-xs text-stone-200 truncate">{task.title}</h5>
+                        <p className="text-[10px] text-stone-400">
+                          Requested by {task.statusRequestedBy || task.assignee.name}
+                        </p>
+
+                        {onApproveTaskStatus && onRejectTaskStatus && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              onClick={() => {
+                                onApproveTaskStatus(task.id);
+                              }}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-2 rounded-lg text-[10px] shadow-xs flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-xs">check</span>
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                onRejectTaskStatus(task.id);
+                              }}
+                              className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700 font-bold py-1 px-2 rounded-lg text-[10px] flex items-center justify-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span>
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Deadline Alerts Section */}
+              {nearingItems.length === 0 && (activeRole !== 'Manager' || pendingApprovals.length === 0) ? (
                 <p className="text-xs text-stone-400 py-3 text-center">
-                  ✨ No task deadlines nearing in the next 7 days.
+                  ✨ No pending approval requests or deadline alerts.
                 </p>
               ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                  {nearingItems.map(({ task, info }) => (
-                    <div
-                      key={task.id}
-                      onClick={() => {
-                        if (onSelectTask) onSelectTask(task);
-                        onNavigate('Dashboard', 'none');
-                        setIsAlertsOpen(false);
-                      }}
-                      className="p-2.5 bg-[#251D18] hover:bg-[#322721] rounded-xl border border-amber-500/20 cursor-pointer transition-colors space-y-1"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800">
-                          {task.code}
-                        </span>
-                        <span className="text-[10px] bg-yellow-400 text-stone-950 font-bold px-2 py-0.5 rounded-full">
-                          {info.statusLabel}
-                        </span>
-                      </div>
-                      <h5 className="font-semibold text-xs text-stone-200 truncate">{task.title}</h5>
-                      <p className="text-[10px] text-stone-400">Assigned to {task.assignee.name}</p>
+                nearingItems.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-stone-300 block">
+                      Deadline Alerts ({nearingItems.length})
+                    </span>
+                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      {nearingItems.map(({ task, info }) => (
+                        <div
+                          key={task.id}
+                          onClick={() => {
+                            if (onSelectTask) onSelectTask(task);
+                            onNavigate('Dashboard', 'none');
+                            setIsAlertsOpen(false);
+                          }}
+                          className="p-2.5 bg-[#251D18] hover:bg-[#322721] rounded-xl border border-amber-500/20 cursor-pointer transition-colors space-y-1"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800">
+                              {task.code}
+                            </span>
+                            <span className="text-[10px] bg-yellow-400 text-stone-950 font-bold px-2 py-0.5 rounded-full">
+                              {info.statusLabel}
+                            </span>
+                          </div>
+                          <h5 className="font-semibold text-xs text-stone-200 truncate">{task.title}</h5>
+                          <p className="text-[10px] text-stone-400">Assigned to {task.assignee.name}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )
               )}
 
               <div className="pt-2 border-t border-white/10 flex items-center justify-between">
                 <button
                   onClick={() => {
-                    onNavigate('Dashboard', 'none');
+                    onNavigate('TaskBoard', 'none');
                     setIsAlertsOpen(false);
                   }}
                   className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
                 >
-                  <span>View Dashboard Alerts</span>
+                  <span>Open Task Board</span>
                   <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </button>
                 <button

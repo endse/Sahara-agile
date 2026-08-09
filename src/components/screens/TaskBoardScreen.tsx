@@ -348,17 +348,26 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
                         </div>
                       </div>
 
-                      {/* Assignee & Status Quick Switch */}
+                      {/* Assignee & Attachments & Status Quick Switch */}
                       <div className="pt-2 border-t border-[#F3E9DC] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <img
-                            src={task.assignee.avatar}
-                            alt={task.assignee.name}
-                            className="w-6 h-6 rounded-full object-cover border-2 border-[#D4A373]"
-                          />
-                          <span className="text-[10px] text-[#8B5E3C] truncate max-w-[80px]">
-                            {task.assignee.name}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <img
+                              src={task.assignee.avatar}
+                              alt={task.assignee.name}
+                              className="w-6 h-6 rounded-full object-cover border-2 border-[#D4A373]"
+                            />
+                            <span className="text-[10px] text-[#8B5E3C] truncate max-w-[70px]">
+                              {task.assignee.name}
+                            </span>
+                          </div>
+
+                          {task.attachments && task.attachments.length > 0 && (
+                            <span className="text-[10px] font-bold text-[#606C38] bg-[#FEFAE0] border border-[#E9EDC9] px-1.5 py-0.5 rounded-full flex items-center gap-0.5" title={`${task.attachments.length} files attached`}>
+                              <span className="material-symbols-outlined text-[12px]">attach_file</span>
+                              <span>{task.attachments.length}</span>
+                            </span>
+                          )}
                         </div>
 
                         {/* Dropdown status selector */}

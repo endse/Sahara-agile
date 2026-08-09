@@ -65,10 +65,14 @@ function AppContent() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
 
-  // Auto-redirect logged-in users away from Landing or SignUp to Dashboard
+  // Auto-redirect based on auth state:
+  // - Logged-in users away from Landing/SignUp to Dashboard
+  // - Logged-out users away from internal screens to Landing
   useEffect(() => {
     if (user && (currentScreen === 'Landing' || currentScreen === 'SignUp')) {
       setCurrentScreen('Dashboard');
+    } else if (!user && currentScreen !== 'Landing' && currentScreen !== 'SignUp') {
+      setCurrentScreen('Landing');
     }
   }, [user, currentScreen]);
 
@@ -449,23 +453,23 @@ function AppContent() {
   };
 
   const screenSubtitles: Record<ScreenId, string> = {
-    Landing: 'Enterprise Field Operations & Infrastructure Workspace',
-    Dashboard: 'Sector 04 Live Operational Overview & Metrics',
-    GlobalSearch: 'Cross-index query engine for tasks, sites, and team members',
-    ProjectTimeline: 'Strategic roadmap and milestone phase progression',
-    TaskBoard: 'Agile Kanban task tracking and mission dispatch',
-    UserStories: 'Agile Hierarchy: Project ➔ User Story ➔ Tasks',
-    AttendanceLog: 'Live shift clock-in/out, hours tracking, and notes',
-    AsyncReports: 'Asynchronous background queues & report execution',
-    ProjectMap: 'GIS spatial telemetry & site location coordinates',
-    Settings: 'Workspace parameters, notifications, and SatCom encryption',
-    TeamSync: 'Field team roster, location tracking, and status',
-    NewTask: 'Dispatch mission or field research objective',
-    NewProject: 'Register new field site or infrastructure project',
-    TaskBoardActivity: 'Task inspector with live telemetry activity feed',
-    Profile: 'Dynamic operator profile, credentials, and field station assignment',
-    SignUp: 'Field operator credential authentication',
-    PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics',
+    Landing: 'Simple Workspace & Operations Platform',
+    Dashboard: 'Live Operational Overview & Metrics',
+    GlobalSearch: 'Search tasks, sites, and team members',
+    ProjectTimeline: 'Project milestones and phases',
+    TaskBoard: 'Track and manage team tasks',
+    UserStories: 'Manage high-level project goals',
+    AttendanceLog: 'Time tracking and shift logs',
+    AsyncReports: 'Generate and view reports',
+    ProjectMap: 'Geographic view of sites',
+    Settings: 'Workspace settings and notifications',
+    TeamSync: 'Manage team members and roles',
+    NewTask: 'Create a new task',
+    NewProject: 'Start a new project',
+    TaskBoardActivity: 'Task details and activity feed',
+    Profile: 'Manage your profile and credentials',
+    SignUp: 'Sign in or create an account',
+    PerformanceAnalytics: 'View performance and attendance charts',
   };
 
   const isFullModalScreen = currentScreen === 'Landing' || currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
@@ -493,7 +497,10 @@ function AppContent() {
             onOpenMobileMenu={() => setIsMobileNavOpen(true)}
             onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
             tasks={scopedTasks}
+            allTasks={tasks}
             onSelectTask={setSelectedTask}
+            onApproveTaskStatus={handleApproveTaskStatus}
+            onRejectTaskStatus={handleRejectTaskStatus}
             managedSector={managedSector}
             onSelectManagedSector={setManagedSector}
           />
@@ -558,6 +565,9 @@ function AppContent() {
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onApproveTaskStatus={handleApproveTaskStatus}
+                  onRejectTaskStatus={handleRejectTaskStatus}
+                  activeRole={activeRole}
                 />
               )}
 
@@ -668,6 +678,9 @@ function AppContent() {
                   selectedTask={selectedTask}
                   onNavigate={handleNavigate}
                   onAddActivity={handleAddActivity}
+                  onApproveTaskStatus={handleApproveTaskStatus}
+                  onRejectTaskStatus={handleRejectTaskStatus}
+                  activeRole={activeRole}
                 />
               )}
 

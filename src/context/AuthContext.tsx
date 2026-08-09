@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   updateProfile,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
@@ -34,6 +35,7 @@ interface AuthContextType {
     isCreatingTeam?: boolean
   ) => Promise<void>;
   signOutUser: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   updateUserProfileData: (updates: Partial<UserProfile>) => Promise<void>;
   switchActiveRole: (role: 'Manager' | 'Employee') => Promise<void>;
   createNewTeam: (teamName: string, managerTitle?: string) => Promise<void>;
@@ -100,138 +102,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(userRef);
+      let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
 
-      const email = firebaseUser.email || '';
-      const matchedInvite = email ? await findInvitationByEmail(email) : null;
-
-      // Determine if Manager role is requested or implied
-      const isManagerRequested =
-        isCreatingTeam ||
-        customRole === 'Operations Manager' ||
-        (customRole &&
-          (customRole.toLowerCase().includes('manager') || customRole.toLowerCase().includes('director')));
-
-      if (docSnap.exists() && !isManagerRequested && !teamName && !customName) {
-        // Normal login / auth check for an existing profile with no override flags
+      if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
         setUserProfile(data);
-        const derivedRole: 'Manager' | 'Employee' =
+        if (
           data.isTeamManager ||
           data.role?.toLowerCase().includes('manager') ||
           data.role?.toLowerCase().includes('director') ||
           data.permissionStatus === 'elevated'
-            ? 'Manager'
-            : 'Employee';
-        setActiveRole(derivedRole);
-        await syncJwtCookie(derivedRole, data.displayName, data.email);
-        return;
-      }
-
-      // Existing doc with override flags OR new user profile creation
-      const existingData = docSnap.exists() ? (docSnap.data() as UserProfile) : null;
-
-      let assignedRole = customRole || existingData?.role || 'Field Technician';
-      let assignedTeam = teamName || existingData?.teamName || 'Sahara Primary Sector';
-      let isManagerRole =
-        isManagerRequested ||
-        existingData?.isTeamManager ||
-        (existingData?.role && existingData.role.toLowerCase().includes('manager')) ||
-        false;
-      let initialPermission: 'pending_review' | 'approved' | 'rejected' | 'elevated' =
-        isManagerRole ? 'approved' : (existingData?.permissionStatus || 'pending_review');
-
-      if (matchedInvite) {
-        assignedRole = matchedInvite.role;
-        assignedTeam = matchedInvite.teamName;
-        isManagerRole = matchedInvite.isManagerInvite || matchedInvite.role.toLowerCase().includes('manager');
-        initialPermission = 'approved';
-        await acceptInvitation(matchedInvite.id);
-      } else if (!isCreatingTeam && !existingData) {
-        // Check roster by email for new users
-        try {
-          const teamSnap = await getDocs(collection(db, 'team'));
-          teamSnap.forEach((d) => {
-            const m = d.data() as TeamMember;
-            if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
-              assignedRole = m.role || assignedRole;
-              assignedTeam = m.teamSector || assignedTeam;
-              if (m.role?.toLowerCase().includes('manager')) {
-                isManagerRole = true;
-              }
-              initialPermission = 'approved';
-            }
-          });
-        } catch (e) {
-          console.warn('Roster check warning:', e);
+        ) {
+          derivedActiveRole = 'Manager';
+        } else {
+          derivedActiveRole = 'Employee';
         }
-      }
+        setActiveRole(derivedActiveRole);
+      } else {
+        // New User Profile Creation logic
+        const email = firebaseUser.email || '';
+        const matchedInvite = email ? await findInvitationByEmail(email) : null;
 
-      if (isManagerRequested) {
-        assignedRole = customRole || 'Operations Manager';
-        assignedTeam = teamName || 'Sahara Primary Sector';
-        isManagerRole = true;
-        initialPermission = 'approved';
-      }
+        let assignedRole = customRole || 'Field Technician';
+        let assignedTeam = teamName || 'Sahara Primary Sector';
+        let isManagerRole = isCreatingTeam || customRole === 'Operations Manager';
+        let initialPermission: 'pending_review' | 'approved' | 'elevated' = isManagerRole ? 'approved' : 'pending_review';
 
-      const updatedProfile: UserProfile = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
-        displayName:
-          customName ||
-          firebaseUser.displayName ||
-          existingData?.displayName ||
-          matchedInvite?.fullName ||
-          'Field Operator',
-        photoURL:
-          firebaseUser.photoURL ||
-          existingData?.photoURL ||
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        role: assignedRole,
-        specialty: existingData?.specialty || 'Hydro-Geology & SatCom Systems',
-        assignedStation: existingData?.assignedStation || 'Al-Kufra Site A',
-        phone: existingData?.phone || '+218 (91) 402-8819',
-        bio: isManagerRole
-          ? 'Operations Manager directing hydrological sensor arrays and team operations.'
-          : 'Field technician executing dispatch orders across Sector 4.',
-        updatedAt: new Date().toISOString(),
-        permissionStatus: initialPermission,
-        teamName: assignedTeam,
-        isTeamManager: isManagerRole,
-      };
+        if (matchedInvite) {
+          // Found invitation! Automatically join team and set role & permissions
+          assignedRole = matchedInvite.role;
+          assignedTeam = matchedInvite.teamName;
+          isManagerRole = matchedInvite.isManagerInvite || matchedInvite.role.toLowerCase().includes('manager');
+          initialPermission = 'approved';
+          await acceptInvitation(matchedInvite.id);
+        } else if (!isCreatingTeam) {
+          // Check if user was pre-invited directly into the team roster by email
+          try {
+            const teamSnap = await getDocs(collection(db, 'team'));
+            teamSnap.forEach((d) => {
+              const m = d.data() as TeamMember;
+              if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
+                assignedRole = m.role || assignedRole;
+                assignedTeam = m.teamSector || assignedTeam;
+                if (m.role?.toLowerCase().includes('manager')) {
+                  isManagerRole = true;
+                }
+                initialPermission = 'approved';
+              }
+            });
+          } catch (e) {
+            console.warn('Roster check warning:', e);
+          }
+        }
 
-      await setDoc(userRef, updatedProfile, { merge: true });
-      setUserProfile(updatedProfile);
-
-      // Sync team member roster doc
-      const teamMemberRef = doc(db, 'team', `TM-${firebaseUser.uid.slice(0, 8)}`);
-      await setDoc(
-        teamMemberRef,
-        {
-          id: `TM-${firebaseUser.uid.slice(0, 8)}`,
-          name: updatedProfile.displayName,
-          email: updatedProfile.email,
+        const newProfile: UserProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
+          displayName: customName || firebaseUser.displayName || matchedInvite?.fullName || 'Field Operator',
+          photoURL:
+            firebaseUser.photoURL ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
           role: assignedRole,
-          avatar: updatedProfile.photoURL,
-          status: 'active',
-          currentTask: isManagerRole ? `Managing Sector Operations (${assignedTeam})` : 'Awaiting Mission Dispatch',
-          location: 'Al-Kufra Site A',
-          localTime: 'UTC+2 (Sahara)',
-          tasksCount: 0,
-          performance: 92,
-          teamSector: assignedTeam,
+          specialty: 'Hydro-Geology & SatCom Systems',
+          assignedStation: 'Al-Kufra Site A',
+          phone: '+218 (91) 402-8819',
+          bio: isManagerRole
+            ? 'Operations Manager directing hydrological sensor arrays and team operations.'
+            : 'Field technician executing dispatch orders across Sector 4.',
+          updatedAt: new Date().toISOString(),
           permissionStatus: initialPermission,
-          requestedRole: assignedRole,
-        },
-        { merge: true }
-      );
+          teamName: assignedTeam,
+          isTeamManager: isManagerRole,
+        };
 
-      const derivedActiveRole: 'Manager' | 'Employee' = isManagerRole ? 'Manager' : 'Employee';
-      setActiveRole(derivedActiveRole);
+        await setDoc(userRef, newProfile);
+        setUserProfile(newProfile);
+
+        // Also add user as a member in the team roster doc
+        const teamMemberRef = doc(db, 'team', `TM-${firebaseUser.uid.slice(0, 8)}`);
+        await setDoc(
+          teamMemberRef,
+          {
+            id: `TM-${firebaseUser.uid.slice(0, 8)}`,
+            name: newProfile.displayName,
+            email: newProfile.email,
+            role: assignedRole,
+            avatar: newProfile.photoURL,
+            status: 'active',
+            currentTask: isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
+            location: 'Al-Kufra Site A',
+            localTime: 'UTC+2 (Sahara)',
+            tasksCount: 0,
+            performance: 92,
+            teamSector: assignedTeam,
+            permissionStatus: initialPermission,
+            requestedRole: assignedRole,
+          },
+          { merge: true }
+        );
+
+        derivedActiveRole = isManagerRole ? 'Manager' : 'Employee';
+        setActiveRole(derivedActiveRole);
+      }
 
       await syncJwtCookie(
         derivedActiveRole,
-        updatedProfile.displayName,
-        updatedProfile.email
+        customName || firebaseUser.displayName || 'Field Operator',
+        firebaseUser.email || undefined
       );
     } catch (err) {
       console.error('Error syncing user profile:', err);
@@ -334,6 +311,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signOut(auth);
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const updateUserProfileData = async (updates: Partial<UserProfile>) => {
     if (!user || !userProfile) return;
     try {
@@ -371,6 +352,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithEmail,
         signUpWithEmail,
         signOutUser,
+        resetPassword,
         updateUserProfileData,
         switchActiveRole,
         createNewTeam,

@@ -14,20 +14,34 @@ export function scopeTasksByTeam(
   managedSector: string = 'All Teams'
 ): Task[] {
   if (tasks.length === 0) return [];
-  const userTeam = getUserTeamSector(userProfile);
-  const userName = userProfile?.displayName?.toLowerCase() || '';
 
   if (activeRole === 'Employee') {
+    const userName = (userProfile?.displayName || '').toLowerCase().trim();
+    const userEmail = (userProfile?.email || '').toLowerCase().trim();
+
     return tasks.filter((t) => {
-      const matchTeam = t.teamSector === userTeam;
-      const matchAssignee = userName && t.assignee?.name?.toLowerCase().includes(userName);
-      return matchTeam || matchAssignee || !t.teamSector;
+      if (!userName && !userEmail) {
+        // Fallback if user profile is not initialized yet
+        return true;
+      }
+
+      const assigneeName = (t.assignee?.name || '').toLowerCase().trim();
+      const statusRequestedBy = (t.statusRequestedBy || '').toLowerCase().trim();
+
+      const nameMatch = userName && (assigneeName === userName || assigneeName.includes(userName) || userName.includes(assigneeName));
+      const emailMatch = userEmail && (assigneeName === userEmail || userEmail.startsWith(assigneeName));
+      const requestedByMatch = (userName || userEmail) && statusRequestedBy && (
+        statusRequestedBy === userName ||
+        statusRequestedBy === userEmail ||
+        (userName && statusRequestedBy.includes(userName))
+      );
+
+      return nameMatch || emailMatch || requestedByMatch;
     });
   }
 
-  // Manager Role
+  // Manager Role: Manager can see ALL tasks (or tasks filtered by managedSector if set)
   if (userProfile?.teamName && userProfile.teamName !== 'Sahara Primary Sector') {
-    // If Manager belongs to a custom registered team, isolate to that team or unassigned
     return tasks.filter((t) => !t.teamSector || t.teamSector === userProfile.teamName || (managedSector !== 'All Teams' && t.teamSector === managedSector));
   }
 

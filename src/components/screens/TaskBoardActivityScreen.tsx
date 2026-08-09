@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ScreenId, Task, Activity } from '../../types';
+import { ScreenId, Task, Activity, TaskAttachment } from '../../types';
 import { getTaskDeadlineInfo } from '../../lib/deadlineUtils';
+import { TaskAttachmentsManager } from '../TaskAttachmentsManager';
 
 interface TaskBoardActivityProps {
   tasks: Task[];
@@ -8,6 +9,10 @@ interface TaskBoardActivityProps {
   selectedTask?: Task | null;
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   onAddActivity: (act: Activity) => void;
+  onUpdateTaskAttachments?: (taskId: string, attachments: TaskAttachment[]) => void;
+  onApproveTaskStatus?: (taskId: string) => void;
+  onRejectTaskStatus?: (taskId: string) => void;
+  activeRole?: 'Manager' | 'Employee';
 }
 
 export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
@@ -15,7 +20,11 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
   activities,
   selectedTask: initialSelectedTask,
   onNavigate,
-  onAddActivity
+  onAddActivity,
+  onUpdateTaskAttachments,
+  onApproveTaskStatus,
+  onRejectTaskStatus,
+  activeRole = 'Manager'
 }) => {
   const [selectedTask, setSelectedTask] = useState<Task>(initialSelectedTask || tasks[0]);
   const [newComment, setNewComment] = useState('');
@@ -109,6 +118,47 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
                 <p className="text-xs text-[#605850] leading-relaxed">{selectedTask.description}</p>
               </div>
 
+              {/* Pending Approval Manager Banner */}
+              {selectedTask.approvalStatus === 'pending_approval' && (
+                <div className="p-4 bg-amber-500/15 border border-amber-500/40 rounded-2xl space-y-2.5 text-xs text-amber-950">
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-1.5 text-amber-900">
+                      <span className="material-symbols-outlined text-base text-amber-700">rate_review</span>
+                      <span>Task Status Change Requested</span>
+                    </span>
+                    <span className="bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded text-[10px] uppercase font-mono">
+                      ➔ {selectedTask.pendingStatus?.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-[11px] opacity-90">
+                    Requested by <strong>{selectedTask.statusRequestedBy || 'Employee'}</strong> on {selectedTask.statusRequestedAt ? new Date(selectedTask.statusRequestedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}.
+                  </p>
+
+                  {activeRole === 'Manager' && (onApproveTaskStatus || onRejectTaskStatus) && (
+                    <div className="flex items-center gap-2 pt-1">
+                      {onApproveTaskStatus && (
+                        <button
+                          onClick={() => onApproveTaskStatus(selectedTask.id)}
+                          className="px-4 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-2xs"
+                        >
+                          <span className="material-symbols-outlined text-base">check</span>
+                          <span>Approve Requested Status</span>
+                        </button>
+                      )}
+                      {onRejectTaskStatus && (
+                        <button
+                          onClick={() => onRejectTaskStatus(selectedTask.id)}
+                          className="px-3.5 py-2 bg-[#BC4749]/15 hover:bg-[#BC4749]/25 text-[#BC4749] font-bold rounded-xl text-xs flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-base">close</span>
+                          <span>Reject Request</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Progress & Assignee Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#faf5ee] p-4 rounded-2xl border border-[#e6e0d6]">
                 <div className="space-y-1">
@@ -141,6 +191,20 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
                     #{tag}
                   </span>
                 ))}
+              </div>
+
+              {/* Task Telemetry Attachments (Firebase Storage) */}
+              <div className="border-t border-[#e0d8cc] pt-4">
+                <TaskAttachmentsManager
+                  taskId={selectedTask.id}
+                  attachments={selectedTask.attachments || []}
+                  onAttachmentsChange={(newAtts) => {
+                    setSelectedTask((prev) => ({ ...prev, attachments: newAtts }));
+                    if (onUpdateTaskAttachments) {
+                      onUpdateTaskAttachments(selectedTask.id, newAtts);
+                    }
+                  }}
+                />
               </div>
             </div>
           )}

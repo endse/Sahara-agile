@@ -28,13 +28,19 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={() => onNavigate('SignUp', 'push')}
+            onClick={() => {
+              window.history.replaceState(null, '', '?mode=signin');
+              onNavigate('SignUp', 'push');
+            }}
             className="px-3.5 py-2 text-xs font-bold text-[#5C4D42] hover:text-[#2D241E] transition-colors"
           >
             Sign In
           </button>
           <button
-            onClick={() => onNavigate('SignUp', 'push')}
+            onClick={() => {
+              window.history.replaceState(null, '', '?mode=signup&type=manager_create_team');
+              onNavigate('SignUp', 'push');
+            }}
             className="px-4 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold rounded-full shadow-sm transition-all flex items-center gap-1.5"
           >
             <span className="material-symbols-outlined text-sm">group_add</span>
@@ -51,36 +57,53 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FEFAE0] border border-[#E9EDC9] rounded-full text-xs font-bold text-[#606C38] shadow-2xs">
           <span className="material-symbols-outlined text-sm text-[#606C38]">verified</span>
-          <span>Sahara Agile Workspace v2.4 • Enterprise Field Operations</span>
+          <span>Sahara Agile Workspace • Simple & Secure Field Operations</span>
         </div>
 
         {/* Main Headline */}
         <div className="space-y-4 max-w-4xl mx-auto">
           <h1 className="font-headline text-3xl sm:text-5xl lg:text-6xl font-light text-[#2D241E] tracking-tight leading-[1.15]">
-            Orchestrate Remote Infrastructure & <br className="hidden sm:inline" />
-            <span className="font-bold text-[#606C38] italic">Agile Field Operations</span>
+            Manage Tasks, Track Teams & <br className="hidden sm:inline" />
+            <span className="font-bold text-[#606C38] italic">Streamline Operations</span>
           </h1>
           <p className="text-sm sm:text-base text-[#8B5E3C] max-w-2xl mx-auto leading-relaxed">
-            The mission-critical workspace for hydro-geology, solar power, robotics, and SatCom teams. Register your organization, invite operators, and streamline status approvals.
+            Create your team as a Manager or join an existing team as a Member. Assign tasks, track attendance, approve project updates, and view live locations in one easy dashboard.
           </p>
         </div>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
-            onClick={() => onNavigate('SignUp', 'push')}
+            onClick={() => {
+              window.history.replaceState(null, '', '?mode=signup&type=manager_create_team');
+              onNavigate('SignUp', 'push');
+            }}
             className="w-full sm:w-auto px-6 py-3.5 bg-[#606C38] hover:bg-[#4d572d] text-white font-bold rounded-full text-xs shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
           >
             <span className="material-symbols-outlined text-base">groups</span>
-            <span>Create a Team (Register Manager)</span>
+            <span>Create a Team (Become Manager)</span>
           </button>
 
           <button
-            onClick={() => onNavigate('SignUp', 'push')}
+            onClick={() => {
+              window.history.replaceState(null, '', '?mode=signup&type=employee');
+              onNavigate('SignUp', 'push');
+            }}
             className="w-full sm:w-auto px-6 py-3.5 bg-white border border-[#E5D5C0] hover:bg-[#FAF5EE] text-[#3D3028] font-bold rounded-full text-xs shadow-2xs transition-all flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined text-base text-[#D4A373]">login</span>
-            <span>Join Existing Team / Sign In</span>
+            <span className="material-symbols-outlined text-base text-[#D4A373]">person_add</span>
+            <span>Join Existing Team</span>
+          </button>
+
+          <button
+            onClick={() => {
+              window.history.replaceState(null, '', '?mode=signin');
+              onNavigate('SignUp', 'push');
+            }}
+            className="w-full sm:w-auto px-5 py-3.5 text-[#5C4D42] hover:text-[#2D241E] font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-base">login</span>
+            <span>Sign In</span>
           </button>
         </div>
 

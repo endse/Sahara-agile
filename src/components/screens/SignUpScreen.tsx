@@ -36,15 +36,19 @@ const getFriendlyAuthErrorMessage = (err: any): string => {
 };
 
 export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [signupType, setSignupType] = useState<'employee' | 'manager_create_team'>('manager_create_team');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fieldRole, setFieldRole] = useState('Hydro-Geologist');
   const [teamName, setTeamName] = useState('');
+
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
   const [hasInviteNotice, setHasInviteNotice] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -53,10 +57,26 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const qMode = params.get('mode');
+    const qType = params.get('type');
     const inviteEmail = params.get('inviteEmail');
     const invitedTeam = params.get('team');
+
+    if (qMode === 'signin') {
+      setMode('signin');
+    } else if (qMode === 'signup') {
+      setMode('signup');
+    }
+
+    if (qType === 'employee') {
+      setSignupType('employee');
+    } else if (qType === 'manager_create_team') {
+      setSignupType('manager_create_team');
+    }
+
     if (inviteEmail) {
       setEmail(inviteEmail);
+      setMode('signup');
       setSignupType('employee');
       setHasInviteNotice(true);
     }
@@ -64,6 +84,25 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
       setTeamName(invitedTeam);
     }
   }, []);
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setResetSuccessMsg('');
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please enter a valid email address to receive password reset instructions.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await resetPassword(email.trim());
+      setResetSuccessMsg(`Password reset instructions sent to ${email.trim()}. Please check your inbox.`);
+    } catch (err: any) {
+      setErrorMsg(getFriendlyAuthErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,41 +225,74 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* Primary Mode Switcher (Sign Up vs Sign In) */}
-        <div className="flex bg-[#FDF8F3] p-1 rounded-full border border-[#E5D5C0]">
+        {/* Primary Mode Switcher (Create Team vs Join Team vs Sign In) */}
+        <div className="grid grid-cols-3 gap-1.5 bg-[#FDF8F3] p-1.5 rounded-2xl border border-[#E5D5C0]">
           <button
             type="button"
             onClick={() => {
               setMode('signup');
+              setSignupType('manager_create_team');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-colors ${
-              mode === 'signup' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+              mode === 'signup' && signupType === 'manager_create_team'
+                ? 'bg-[#606C38] text-white shadow-xs'
+                : 'text-[#5C4D42] hover:text-[#2D241E] hover:bg-white/50'
             }`}
           >
-            Create Account
+            <span className="material-symbols-outlined text-sm">groups</span>
+            <span className="truncate">Create Team</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMode('signup');
+              setSignupType('employee');
+              setErrorMsg('');
+            }}
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+              mode === 'signup' && signupType === 'employee'
+                ? 'bg-[#D4A373] text-white shadow-xs'
+                : 'text-[#5C4D42] hover:text-[#2D241E] hover:bg-white/50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">person_add</span>
+            <span className="truncate">Join Team</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
               setMode('signin');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-colors ${
-              mode === 'signin' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+              mode === 'signin'
+                ? 'bg-[#2D241E] text-white shadow-xs'
+                : 'text-[#5C4D42] hover:text-[#2D241E] hover:bg-white/50'
             }`}
           >
-            Sign In
+            <span className="material-symbols-outlined text-sm">login</span>
+            <span className="truncate">Sign In</span>
           </button>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-[#BC4749]/10 border border-[#BC4749]/30 text-[#BC4749] rounded-2xl text-xs text-center font-medium">
-            {errorMsg}
+          <div className="p-3 bg-[#BC4749]/10 border border-[#BC4749]/30 text-[#BC4749] rounded-2xl text-xs text-center font-medium flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-sm shrink-0">error</span>
+            <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Form Feedback */}
+        {resetSuccessMsg && (
+          <div className="p-3.5 bg-[#FEFAE0] border border-[#E9EDC9] text-[#606C38] rounded-2xl text-xs text-center font-medium flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-base shrink-0">mark_email_read</span>
+            <span>{resetSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* Form Feedback or Active Auth Form */}
         {submitted ? (
           <div className="p-6 bg-[#FEFAE0] border border-[#E9EDC9] text-[#606C38] rounded-2xl text-center space-y-2">
             <span className="material-symbols-outlined text-4xl text-[#606C38]">verified_user</span>
@@ -230,6 +302,54 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                 ? 'Team created! Setting up Manager Dashboard...'
                 : 'Registered as Employee! Redirecting to Workspace...'}
             </p>
+          </div>
+        ) : isResetMode ? (
+          <div className="space-y-4">
+            <div className="p-3.5 bg-[#FEFAE0] border border-[#E9EDC9] rounded-2xl text-xs text-[#606C38] space-y-1">
+              <span className="font-bold block flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">lock_reset</span>
+                Reset Your Password
+              </span>
+              <p className="text-[11px] opacity-90">
+                Enter your registered Sahara account email address below. We will send you a password reset link.
+              </p>
+            </div>
+
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#3D3028] uppercase">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="operator@sahara-agile.org"
+                  className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-[#606C38] hover:bg-[#4d572d] text-white py-3.5 rounded-full text-xs font-medium shadow-sm transition-colors"
+                >
+                  {isSubmitting ? 'Sending Instructions...' : 'Send Password Reset Link'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetMode(false);
+                    setErrorMsg('');
+                    setResetSuccessMsg('');
+                  }}
+                  className="w-full py-2 text-xs font-semibold text-[#8B5E3C] hover:text-[#3D3028] transition-colors"
+                >
+                  ← Return to Sign In
+                </button>
+              </div>
+            </form>
           </div>
         ) : (
           <div className="space-y-4">
@@ -267,48 +387,27 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
               <div className="flex-1 h-px bg-[#E5D5C0]" />
             </div>
 
-            {/* Signup Type Sub-Toggle */}
+            {/* Active Mode Banner */}
             {mode === 'signup' && (
-              <div className="p-3 bg-[#FDF8F3] border border-[#E5D5C0] rounded-2xl space-y-3">
-                <span className="text-[11px] font-bold text-[#3D3028] uppercase tracking-wider block">
-                  Account Onboarding Type:
+              <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-3 ${
+                signupType === 'manager_create_team'
+                  ? 'bg-[#FEFAE0] border-[#E9EDC9] text-[#606C38]'
+                  : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#8B5E3C]'
+              }`}>
+                <span className="material-symbols-outlined text-xl shrink-0">
+                  {signupType === 'manager_create_team' ? 'groups' : 'person_add'}
                 </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSignupType('employee')}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      signupType === 'employee'
-                        ? 'bg-white border-[#606C38] ring-2 ring-[#606C38]/20 shadow-xs'
-                        : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#8B5E3C] hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-[#3D3028]">
-                      <span className="material-symbols-outlined text-sm text-[#606C38]">person</span>
-                      <span>Join as Employee</span>
-                    </div>
-                    <p className="text-[10px] text-[#8B5E3C] mt-1 leading-tight">
-                      Default role. Join existing team or respond to Manager invite.
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSignupType('manager_create_team')}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      signupType === 'manager_create_team'
-                        ? 'bg-white border-[#D4A373] ring-2 ring-[#D4A373]/20 shadow-xs'
-                        : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#8B5E3C] hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-[#3D3028]">
-                      <span className="material-symbols-outlined text-sm text-[#D4A373]">groups</span>
-                      <span>Create a New Team</span>
-                    </div>
-                    <p className="text-[10px] text-[#8B5E3C] mt-1 leading-tight">
-                      First time setup. Register team & gain Team Manager role.
-                    </p>
-                  </button>
+                <div>
+                  <span className="font-bold block">
+                    {signupType === 'manager_create_team'
+                      ? 'Creating a New Team (Manager Role)'
+                      : 'Joining an Existing Team'}
+                  </span>
+                  <span className="text-[11px] opacity-90">
+                    {signupType === 'manager_create_team'
+                      ? 'You will be registered as Team Manager with full administrative and approval rights.'
+                      : 'Join your organization as an employee. Enter your assigned team name if known.'}
+                  </span>
                 </div>
               </div>
             )}
@@ -361,15 +460,47 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#3D3028] uppercase">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#3D3028] uppercase">Password</label>
+                  {mode === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsResetMode(true);
+                        setErrorMsg('');
+                        setResetSuccessMsg('');
+                      }}
+                      className="text-[11px] font-semibold text-[#D4A373] hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full pl-4 pr-10 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B5E3C] hover:text-[#3D3028] flex items-center justify-center p-1"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                {mode === 'signup' && (
+                  <p className="text-[10px] text-[#8B5E3C] pl-2">
+                    Must be at least 6 characters.
+                  </p>
+                )}
               </div>
 
               {mode === 'signup' && signupType === 'employee' && (
@@ -393,15 +524,20 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#606C38] hover:bg-[#4d572d] text-white py-3.5 rounded-full text-xs font-medium shadow-sm transition-colors"
+                  className="w-full bg-[#606C38] hover:bg-[#4d572d] text-white py-3.5 rounded-full text-xs font-medium shadow-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  {isSubmitting
-                    ? 'Authenticating...'
-                    : mode === 'signup'
-                    ? signupType === 'manager_create_team'
-                      ? 'Create Team & Register as Manager'
-                      : 'Complete Employee Registration'
-                    : 'Authenticate Credentials'}
+                  {isSubmitting && (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                  )}
+                  <span>
+                    {isSubmitting
+                      ? 'Authenticating...'
+                      : mode === 'signup'
+                      ? signupType === 'manager_create_team'
+                        ? 'Create Team & Register as Manager'
+                        : 'Complete Employee Registration'
+                      : 'Authenticate Credentials'}
+                  </span>
                 </button>
               </div>
             </form>

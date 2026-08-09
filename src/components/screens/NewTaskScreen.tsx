@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ScreenId, Task, TeamMember, SiteLocation } from '../../types';
+import { ScreenId, Task, TeamMember, SiteLocation, TaskAttachment } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { TaskAttachmentsManager } from '../TaskAttachmentsManager';
 
 interface NewTaskProps {
   team: TeamMember[];
@@ -42,6 +43,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
     ? [currentUserMember, ...team.filter((t) => t.id !== currentUserMember.id)]
     : team;
 
+  const [taskId] = useState(() => `TASK-${Date.now()}`);
   const [title, setTitle] = useState('');
   const [code, setCode] = useState(`SAH-${Math.floor(800 + Math.random() * 90)}`);
   const [priority, setPriority] = useState<Task['priority']>('medium');
@@ -51,6 +53,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
   const [dueDate, setDueDate] = useState('Nov 15, 2026');
   const [tagsInput, setTagsInput] = useState('Hydrology, Sensor');
   const [description, setDescription] = useState('');
+  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +63,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
     const chosenLocation = locations.find(l => l.id === locationId) || locations[0];
 
     const newTask: Task = {
-      id: `TASK-${Date.now()}`,
+      id: taskId,
       code,
       title,
       status,
@@ -81,7 +84,8 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
         label: chosenLocation.name
       },
       updatedAt: 'Just now',
-      timeSpent: '0h'
+      timeSpent: '0h',
+      attachments: attachments
     };
 
     onAddTask(newTask);
@@ -241,6 +245,15 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide operational guidelines, safety thresholds, and required sensor parameters..."
               className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-2xl p-4 text-xs font-medium text-[#3D3028] outline-none"
+            />
+          </div>
+
+          {/* Attachments Section */}
+          <div className="md:col-span-2 border-t border-[#E5D5C0] pt-4">
+            <TaskAttachmentsManager
+              taskId={taskId}
+              attachments={attachments}
+              onAttachmentsChange={(newAtts) => setAttachments(newAtts)}
             />
           </div>
         </div>

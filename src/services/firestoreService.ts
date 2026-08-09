@@ -8,7 +8,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
+import { Task, TaskAttachment, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
 
 // --- TASKS ---
 export const subscribeTasks = (onData: (tasks: Task[]) => void) => {
@@ -28,6 +28,10 @@ export const saveTask = async (task: Task) => {
 
 export const updateTaskStatus = async (taskId: string, status: Task['status']) => {
   await updateDoc(doc(db, 'tasks', taskId), { status });
+};
+
+export const updateTaskAttachments = async (taskId: string, attachments: TaskAttachment[]) => {
+  await updateDoc(doc(db, 'tasks', taskId), { attachments });
 };
 
 // --- LOCATIONS (PROJECTS) ---
