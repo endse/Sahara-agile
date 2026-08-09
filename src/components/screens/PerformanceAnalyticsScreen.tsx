@@ -263,12 +263,12 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
                 onChange={(e) => setSelectedEmployee(e.target.value)}
                 className="bg-white border border-[#E5D5C0] rounded-2xl px-4 py-2 text-xs text-[#3D3028] font-bold outline-none focus:ring-2 focus:ring-[#D4A373] shadow-xs"
               >
-                <option value="all">All Team Members ({team.length || 5})</option>
-                <option value="Amara Vance">Amara Vance (Hydro-Geologist)</option>
-                <option value="Tariq Al-Mansoor">Tariq Al-Mansoor (Grid Lead)</option>
-                <option value="Elena Rostova">Elena Rostova (Robotics Lead)</option>
-                <option value="Kofi Mensah">Kofi Mensah (Ecologist)</option>
-                <option value="Maya Lin">Maya Lin (SatCom Lead)</option>
+                <option value="all">All Team Members ({team.length})</option>
+                {team.map((m) => (
+                  <option key={m.id || m.name} value={m.name}>
+                    {m.name} ({m.role})
+                  </option>
+                ))}
               </select>
             ) : (
               <div className="bg-amber-100/80 border border-amber-300 rounded-2xl px-4 py-2 text-xs text-amber-900 font-bold flex items-center gap-1.5 shadow-xs">

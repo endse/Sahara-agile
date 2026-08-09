@@ -148,6 +148,11 @@ export interface TeamMember {
   tasksCount: number;
   performance: number;
   teamSector?: string;
+  permissionStatus?: 'pending_review' | 'approved' | 'rejected' | 'elevated';
+  requestedRole?: string;
+  requestedPermissions?: string[];
+  reviewedBy?: string;
+  reviewedAt?: string;
 }
 
 export interface TimelineMilestone {

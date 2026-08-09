@@ -52,68 +52,87 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
         return true;
       });
 
+  const [lastStampedAt, setLastStampedAt] = useState<string | null>(null);
+
   const handleSeed = async () => {
     setIsProcessing(true);
     await onSeedDemoData();
     setIsProcessing(false);
-    setNotification('✅ All team demo data loaded successfully into active application workspace!');
-    setTimeout(() => setNotification(null), 5000);
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastStampedAt(timeStr);
+    setNotification('🏷️ STAMP DEMO COMPLETE: Fresh stamped demo data loaded into Firestore & active workspace!');
+    setTimeout(() => setNotification(null), 6000);
   };
 
   const handleClear = async () => {
     setIsProcessing(true);
     await onClearAllData();
     setIsProcessing(false);
-    setNotification('🧹 Application reset to clean empty state.');
-    setTimeout(() => setNotification(null), 5000);
+    setLastStampedAt(null);
+    setNotification('🧹 FIRESTORE CLEARED: Removed all existing Firebase Firestore documents.');
+    setTimeout(() => setNotification(null), 6000);
   };
 
   const isPopulated = tasksCount > 0 || teamCount > 0;
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
-      {/* Top Banner & Title */}
-      <div className="bg-[#1A1411] text-white rounded-3xl p-6 lg:p-8 shadow-xl border border-amber-500/30 space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      {/* Top Banner & Title with Stamp Demo Status */}
+      <div className="bg-[#1A1411] text-white rounded-3xl p-6 lg:p-8 shadow-xl border border-amber-500/30 space-y-6 relative overflow-hidden">
+        {/* Decorative Stamp Watermark Background */}
+        <div className="absolute -right-8 -bottom-8 pointer-events-none opacity-10 flex items-center justify-center">
+          <div className="border-8 border-amber-500 rounded-full p-8 rotate-12 text-amber-500 font-mono font-black text-6xl tracking-widest uppercase">
+            STAMP DEMO
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                /demo Route & Dataset Hub
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">verified</span>
+                /demo Page & Stamp Demo Control
               </span>
               <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
                 isPopulated
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                   : 'bg-stone-700 text-stone-300 border-stone-600'
               }`}>
-                {isPopulated ? `Active App: ${tasksCount} tasks, ${teamCount} team members` : 'Active App: Clean Empty State'}
+                {isPopulated ? `Active Workspace: ${tasksCount} tasks, ${teamCount} members` : 'Active Workspace: Empty Firestore State'}
               </span>
+              {lastStampedAt && (
+                <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 text-[11px] font-bold px-2.5 py-1 rounded-full font-mono flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">approval</span>
+                  STAMPED AT {lastStampedAt}
+                </span>
+              )}
             </div>
             <h1 className="text-2xl lg:text-4xl font-headline font-bold text-white tracking-tight">
-              Sahara Agile Showcase & Demo Datasets
+              Sahara Agile Stamp Demo & Firestore Control
             </h1>
             <p className="text-stone-300 text-sm max-w-3xl leading-relaxed">
-              Explore pre-loaded datasets across all Sahara field teams (Hydro-Geology, Solar Grid, Robotics, Ecology, SatCom). Import demo data directly into your workspace or reset to a clean state anytime.
+              Remove existing Firestore data and stamp fresh demo datasets directly into your workspace. Designed for instant live testing across all field sectors (Hydro-Geology, Solar Grid, Robotics, SatCom).
             </p>
           </div>
 
-          {/* Quick Actions Bar */}
+          {/* Quick Stamp & Clear Actions Bar */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               onClick={handleSeed}
               disabled={isProcessing}
-              className="px-4 py-2.5 bg-[#8B5E3C] hover:bg-[#6f492e] text-white text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+              className="px-5 py-3 bg-[#8B5E3C] hover:bg-[#6f492e] text-white text-xs font-bold rounded-2xl shadow-lg transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 ring-2 ring-amber-400/30"
             >
-              <span className="material-symbols-outlined text-lg">download</span>
-              <span>Load Demo Data to App</span>
+              <span className="material-symbols-outlined text-xl">approval</span>
+              <span>Stamp Demo Data</span>
             </button>
 
             <button
               onClick={handleClear}
               disabled={isProcessing}
-              className="px-4 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600 text-xs font-bold rounded-2xl transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+              className="px-4 py-3 bg-red-950/60 hover:bg-red-900/80 text-red-200 border border-red-500/40 text-xs font-bold rounded-2xl transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-lg text-amber-400">delete_sweep</span>
-              <span>Reset to Empty State</span>
+              <span className="material-symbols-outlined text-lg text-red-400">delete_forever</span>
+              <span>Remove All Firestore Data</span>
             </button>
           </div>
         </div>

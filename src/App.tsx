@@ -29,6 +29,7 @@ import {
   subscribeActivities,
   saveActivity,
   subscribeTeam,
+  saveTeamMember,
   subscribeTimeline,
   saveTimelineMilestone,
   subscribeStories,
@@ -295,6 +296,42 @@ function AppContent() {
     await saveActivity(newAct);
   };
 
+  const handleAddTeamMember = async (newMember: TeamMember) => {
+    setTeam(prev => [newMember, ...prev]);
+    await saveTeamMember(newMember);
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userProfile?.displayName || 'Operations Manager',
+      avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      action: 'registered team member',
+      target: `${newMember.name} (${newMember.role})`,
+      time: 'Just now',
+      type: 'assignment',
+      detail: `Assigned to ${newMember.location || 'Al-Kufra Site A'} - Sector: ${newMember.teamSector || 'Hydro-Geology'}`
+    };
+    setActivities(prev => [newAct, ...prev]);
+    await saveActivity(newAct);
+  };
+
+  const handleUpdateTeamMember = async (updatedMember: TeamMember) => {
+    setTeam(prev => prev.map(m => m.id === updatedMember.id ? updatedMember : m));
+    await saveTeamMember(updatedMember);
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userProfile?.displayName || 'Operations Manager',
+      avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      action: 'updated permission & role review',
+      target: `${updatedMember.name} (${updatedMember.role})`,
+      time: 'Just now',
+      type: 'status',
+      detail: `Status: ${updatedMember.permissionStatus || 'Approved'} - Sector: ${updatedMember.teamSector || 'General'}`
+    };
+    setActivities(prev => [newAct, ...prev]);
+    await saveActivity(newAct);
+  };
+
   const handleUpdateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
     setTasks(prev =>
       prev.map(t => {
@@ -537,7 +574,13 @@ function AppContent() {
               )}
 
               {currentScreen === 'TeamSync' && (
-                <TeamSyncScreen team={scopedTeam} onNavigate={handleNavigate} />
+                <TeamSyncScreen
+                  team={scopedTeam}
+                  onNavigate={handleNavigate}
+                  onAddTeamMember={handleAddTeamMember}
+                  onUpdateTeamMember={handleUpdateTeamMember}
+                  activeRole={activeRole}
+                />
               )}
 
               {currentScreen === 'NewTask' && (

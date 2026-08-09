@@ -10,8 +10,8 @@ export interface DailyCheckInOutData {
   clockOutIso?: string;
   clockInFormatted: string;
   clockOutFormatted: string;
-  clockInHourDecimal: number; // e.g. 8.25 for 08:15 AM
-  clockOutHourDecimal: number; // e.g. 17.5 for 05:30 PM
+  clockInHourDecimal: number;
+  clockOutHourDecimal: number;
   totalHours: number;
   overtimeHours: number;
   breakMinutes: number;
@@ -25,10 +25,10 @@ export interface DailyPerformanceData {
   date: string;
   employeeName: string;
   userAvatar?: string;
-  performanceScore: number; // 0..100
+  performanceScore: number;
   tasksCompleted: number;
   tasksAssigned: number;
-  qualityRating: number; // 1.0..5.0
+  qualityRating: number;
   efficiencyPct: number;
   hoursWorked: number;
 }
@@ -74,21 +74,13 @@ export interface EmployeeRadarMetrics {
   employeeName: string;
   avatar: string;
   role: string;
-  taskVelocity: number; // 0..100
-  punctuality: number; // 0..100
-  hoursConsistency: number; // 0..100
-  qualitySafety: number; // 0..100
-  collaboration: number; // 0..100
+  taskVelocity: number;
+  punctuality: number;
+  hoursConsistency: number;
+  qualitySafety: number;
+  collaboration: number;
   overallScore: number;
 }
-
-const DEFAULT_EMPLOYEES = [
-  { name: 'Amara Vance', role: 'Lead Hydro-Geologist', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Tariq Al-Mansoor', role: 'Grid Architect', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Elena Rostova', role: 'Robotics Lead', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Kofi Mensah', role: 'Ecologist', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80' },
-  { name: 'Maya Lin', role: 'SatCom Lead', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80' }
-];
 
 export interface AllEmployeesDayCheckInOutData {
   day: number;
@@ -118,19 +110,9 @@ export function formatDecimalToTime(decimalHour: number): string {
   return `${displayHours}:${displayMins} ${period}`;
 }
 
-// Pseudo-random deterministic generator based on seed string
-function seedRandom(seed: string): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const x = Math.sin(hash++) * 10000;
-  return x - Math.floor(x);
-}
-
 /**
  * Calculates 31 days of Check-In & Check-Out records for a given month and employee.
+ * Strictly uses real attendance logs.
  */
 export function getMonthlyCheckInOutData(
   year: number,
@@ -143,7 +125,7 @@ export function getMonthlyCheckInOutData(
   const monthStr = month < 10 ? `0${month}` : `${month}`;
   const result: DailyCheckInOutData[] = [];
 
-  const targetEmpObj = DEFAULT_EMPLOYEES.find((e) => e.name === employeeName) || DEFAULT_EMPLOYEES[0];
+  const targetEmpObj = team.find((e) => e.name === employeeName) || { name: employeeName, avatar: '' };
 
   for (let day = 1; day <= daysCount; day++) {
     const dayStr = day < 10 ? `0${day}` : `${day}`;
@@ -192,83 +174,27 @@ export function getMonthlyCheckInOutData(
         overtimeHours: otH,
         breakMinutes: mainLog.breakMinutes || 30,
         status: mainLog.status === 'clocked_in' ? 'clocked_in_now' : otH > 0 ? 'overtime' : clockInDecimal > 8.5 ? 'late' : 'on_time',
-        locationName: mainLog.locationName || 'Al-Kufra Hydro Site',
+        locationName: mainLog.locationName || 'Field Station',
         isWeekend,
       });
     } else {
-      // Deterministic simulation for historical complete 31-day month view
-      if (isWeekend) {
-        const rndWeekend = seedRandom(`${employeeName}-${dateStr}-wknd`);
-        if (rndWeekend > 0.75) { // Occasional weekend shift
-          const clockInDec = 8.5 + rndWeekend * 0.5;
-          const totalH = 6.0 + rndWeekend * 2;
-          const clockOutDec = clockInDec + totalH;
-
-          result.push({
-            day,
-            date: dateStr,
-            dayName,
-            employeeName: employeeName === 'all' ? targetEmpObj.name : employeeName,
-            userAvatar: targetEmpObj.avatar,
-            clockInFormatted: formatDecimalToTime(clockInDec),
-            clockOutFormatted: formatDecimalToTime(clockOutDec),
-            clockInHourDecimal: Number(clockInDec.toFixed(2)),
-            clockOutHourDecimal: Number(clockOutDec.toFixed(2)),
-            totalHours: Number(totalH.toFixed(2)),
-            overtimeHours: Number(Math.max(0, totalH - 8).toFixed(2)),
-            breakMinutes: 30,
-            status: 'overtime',
-            locationName: 'Djanet Microgrid Station',
-            isWeekend: true,
-          });
-        } else {
-          result.push({
-            day,
-            date: dateStr,
-            dayName,
-            employeeName: employeeName === 'all' ? targetEmpObj.name : employeeName,
-            userAvatar: targetEmpObj.avatar,
-            clockInFormatted: '—',
-            clockOutFormatted: '—',
-            clockInHourDecimal: 0,
-            clockOutHourDecimal: 0,
-            totalHours: 0,
-            overtimeHours: 0,
-            breakMinutes: 0,
-            status: 'off_duty',
-            locationName: 'Off Duty (Weekend)',
-            isWeekend: true,
-          });
-        }
-      } else {
-        // Weekday shift
-        const rnd = seedRandom(`${employeeName}-${dateStr}`);
-        const clockInDec = 7.5 + rnd * 1.25; // 07:30 AM to 08:45 AM
-        const shiftDuration = 8.0 + (rnd > 0.6 ? (rnd - 0.6) * 4 : 0); // 8.0 to 9.6 hrs
-        const clockOutDec = clockInDec + shiftDuration;
-        const otH = shiftDuration > 8.0 ? Number((shiftDuration - 8.0).toFixed(2)) : 0;
-        const statusVal = otH > 0 ? 'overtime' : clockInDec > 8.5 ? 'late' : 'on_time';
-        const stations = ['Al-Kufra Hydro Site', 'Djanet Microgrid', 'Tibesti Base', 'Siwa Oasis Shelter', 'Sebha Solar Complex'];
-        const station = stations[Math.floor(rnd * stations.length)];
-
-        result.push({
-          day,
-          date: dateStr,
-          dayName,
-          employeeName: employeeName === 'all' ? targetEmpObj.name : employeeName,
-          userAvatar: targetEmpObj.avatar,
-          clockInFormatted: formatDecimalToTime(clockInDec),
-          clockOutFormatted: formatDecimalToTime(clockOutDec),
-          clockInHourDecimal: Number(clockInDec.toFixed(2)),
-          clockOutHourDecimal: Number(clockOutDec.toFixed(2)),
-          totalHours: Number(shiftDuration.toFixed(2)),
-          overtimeHours: otH,
-          breakMinutes: rnd > 0.5 ? 45 : 30,
-          status: statusVal,
-          locationName: station,
-          isWeekend: false,
-        });
-      }
+      result.push({
+        day,
+        date: dateStr,
+        dayName,
+        employeeName: employeeName === 'all' ? targetEmpObj.name || 'Team' : employeeName,
+        userAvatar: targetEmpObj.avatar,
+        clockInFormatted: '—',
+        clockOutFormatted: '—',
+        clockInHourDecimal: 0,
+        clockOutHourDecimal: 0,
+        totalHours: 0,
+        overtimeHours: 0,
+        breakMinutes: 0,
+        status: 'off_duty',
+        locationName: isWeekend ? 'Off Duty (Weekend)' : 'No Shift Logged',
+        isWeekend,
+      });
     }
   }
 
@@ -276,7 +202,7 @@ export function getMonthlyCheckInOutData(
 }
 
 /**
- * Calculates 31 days of Check-In & Check-Out records aggregated for ALL 5 team members.
+ * Calculates 31 days of Check-In & Check-Out records aggregated for ALL team members.
  */
 export function getAllEmployeesMonthlyCheckInOutData(
   year: number,
@@ -285,7 +211,9 @@ export function getAllEmployeesMonthlyCheckInOutData(
   team: TeamMember[] = []
 ): AllEmployeesDayCheckInOutData[] {
   const daysCount = getDaysInMonth(year, month);
-  const empList = team.length > 0 ? team : DEFAULT_EMPLOYEES;
+  const empList = team;
+  if (empList.length === 0) return [];
+
   const result: AllEmployeesDayCheckInOutData[] = [];
 
   const employeeLogMaps = empList.map((emp) =>
@@ -335,35 +263,42 @@ export function getMonthlyPerformanceData(
   const daysCount = getDaysInMonth(year, month);
   const monthStr = month < 10 ? `0${month}` : `${month}`;
   const result: DailyPerformanceData[] = [];
-  const targetEmpObj = DEFAULT_EMPLOYEES.find((e) => e.name === employeeName) || DEFAULT_EMPLOYEES[0];
+  const targetEmpObj = team.find((e) => e.name === employeeName) || { name: employeeName, avatar: '' };
 
   for (let day = 1; day <= daysCount; day++) {
     const dayStr = day < 10 ? `0${day}` : `${day}`;
     const dateStr = `${year}-${monthStr}-${dayStr}`;
-    const dateObj = new Date(year, month - 1, day);
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
-    const rnd = seedRandom(`perf-${employeeName}-${dateStr}`);
-    
-    // Performance score base (82 to 98 for weekday, 0 or light bonus on weekend)
-    let score = isWeekend ? (rnd > 0.75 ? Math.round(75 + rnd * 20) : 0) : Math.round(82 + rnd * 17);
-    let completed = isWeekend ? (rnd > 0.75 ? 1 : 0) : Math.floor(1 + rnd * 3);
-    let assigned = isWeekend ? completed : completed + Math.floor(rnd * 2);
-    let quality = isWeekend ? (score > 0 ? 4.2 : 0) : Number((4.0 + rnd * 0.95).toFixed(1));
-    let efficiency = isWeekend ? (score > 0 ? 85 : 0) : Math.round(85 + rnd * 14);
-    let hoursWorked = isWeekend ? (score > 0 ? 6.0 : 0) : Number((8.0 + rnd * 1.5).toFixed(1));
+    const dayTasks = tasks.filter((t) => {
+      const matchEmp = employeeName === 'all' ? true : t.assignee.name.toLowerCase().includes(employeeName.toLowerCase());
+      const taskDate = t.updatedAt ? t.updatedAt.slice(0, 10) : t.dueDate ? t.dueDate.slice(0, 10) : '';
+      return matchEmp && taskDate === dateStr;
+    });
+
+    const tasksCompleted = dayTasks.filter((t) => t.status === 'done').length;
+    const tasksAssigned = dayTasks.length;
+
+    let performanceScore = 0;
+    let qualityRating = 0;
+    let efficiencyPct = 0;
+
+    if (tasksAssigned > 0) {
+      performanceScore = Math.round((tasksCompleted / tasksAssigned) * 100);
+      qualityRating = Number((3.5 + (tasksCompleted / tasksAssigned) * 1.5).toFixed(1));
+      efficiencyPct = Math.min(100, Math.round(70 + (tasksCompleted / tasksAssigned) * 30));
+    }
 
     result.push({
       day,
       date: dateStr,
       employeeName: employeeName === 'all' ? 'Team Average' : employeeName,
       userAvatar: targetEmpObj.avatar,
-      performanceScore: score,
-      tasksCompleted: completed,
-      tasksAssigned: assigned,
-      qualityRating: quality,
-      efficiencyPct: efficiency,
-      hoursWorked,
+      performanceScore,
+      tasksCompleted,
+      tasksAssigned,
+      qualityRating,
+      efficiencyPct,
+      hoursWorked: 0,
     });
   }
 
@@ -371,7 +306,7 @@ export function getMonthlyPerformanceData(
 }
 
 /**
- * Generates 31-day Attendance Heatmap matrix across all team members.
+ * Generates 31-day Attendance Heatmap matrix across team members.
  */
 export function getMonthlyHeatmapMatrix(
   year: number,
@@ -379,8 +314,11 @@ export function getMonthlyHeatmapMatrix(
   attendanceLogs: AttendanceLog[] = [],
   team: TeamMember[] = []
 ): EmployeeHeatmapRow[] {
-  const daysCount = getDaysInMonth(year, month);
-  const empList = team.length > 0 ? team : DEFAULT_EMPLOYEES;
+  const empList = team;
+
+  if (empList.length === 0) {
+    return [];
+  }
 
   return empList.map((emp) => {
     const dailyLogs = getMonthlyCheckInOutData(year, month, emp.name, attendanceLogs, team);
@@ -410,11 +348,11 @@ export function getMonthlyHeatmapMatrix(
       };
     });
 
-    const punctuality = activeDaysCount > 0 ? Math.round((onTimeCount / activeDaysCount) * 100) : 100;
+    const punctuality = activeDaysCount > 0 ? Math.round((onTimeCount / activeDaysCount) * 100) : 0;
 
     return {
       employeeName: emp.name,
-      avatar: emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      avatar: emp.avatar || '',
       role: emp.role || 'Field Operator',
       days: cells,
       monthlyTotalHours: Number(totalH.toFixed(1)),
@@ -433,34 +371,34 @@ export function getMonthlyTaskBurndown(
 ): TaskBurndownPoint[] {
   const daysCount = getDaysInMonth(year, month);
   const monthStr = month < 10 ? `0${month}` : `${month}`;
-  const totalTasksCount = Math.max(25, tasks.length * 3);
+  const totalTasksCount = tasks.length;
   const result: TaskBurndownPoint[] = [];
-
-  let cumCompleted = 0;
-  let cumCreated = Math.floor(totalTasksCount * 0.4);
 
   for (let day = 1; day <= daysCount; day++) {
     const dayStr = day < 10 ? `0${day}` : `${day}`;
     const dateStr = `${year}-${monthStr}-${dayStr}`;
-    const dateObj = new Date(year, month - 1, day);
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
-    const rnd = seedRandom(`burndown-${dateStr}`);
-    if (!isWeekend) {
-      cumCompleted += Math.floor(1 + rnd * 2);
-      if (day < 20) cumCreated += Math.floor(rnd * 1.5);
-    }
+    const createdTillNow = tasks.filter((t) => {
+      const createdDate = t.updatedAt ? t.updatedAt.slice(0, 10) : t.dueDate ? t.dueDate.slice(0, 10) : dateStr;
+      return createdDate <= dateStr;
+    }).length;
 
-    const idealRemaining = Math.max(0, Math.round(totalTasksCount * (1 - day / daysCount)));
-    const actualRemaining = Math.max(0, cumCreated - cumCompleted);
+    const completedTillNow = tasks.filter((t) => {
+      if (t.status !== 'done') return false;
+      const completedDate = t.updatedAt ? t.updatedAt.slice(0, 10) : dateStr;
+      return completedDate <= dateStr;
+    }).length;
+
+    const idealRemaining = totalTasksCount > 0 ? Math.max(0, Math.round(totalTasksCount * (1 - day / daysCount))) : 0;
+    const actualRemaining = Math.max(0, createdTillNow - completedTillNow);
 
     result.push({
       day,
       date: dateStr,
       targetRemaining: idealRemaining,
       actualRemaining,
-      tasksCompletedCumulative: cumCompleted,
-      tasksCreatedCumulative: cumCreated,
+      tasksCompletedCumulative: completedTillNow,
+      tasksCreatedCumulative: createdTillNow,
     });
   }
 
@@ -471,17 +409,10 @@ export function getMonthlyTaskBurndown(
  * Calculates shift hours & overtime distribution across field station locations.
  */
 export function getStationHoursDistribution(attendanceLogs: AttendanceLog[] = []): StationDistributionItem[] {
-  const stationMap: { [key: string]: { reg: number; ot: number } } = {
-    'Al-Kufra Hydro Site': { reg: 340, ot: 42 },
-    'Djanet Microgrid': { reg: 280, ot: 38 },
-    'Tibesti Base': { reg: 240, ot: 28 },
-    'Siwa Oasis Shelter': { reg: 190, ot: 15 },
-    'Sebha Solar Complex': { reg: 150, ot: 12 },
-  };
+  const stationMap: { [key: string]: { reg: number; ot: number } } = {};
 
-  // Add real attendance logs if available
   attendanceLogs.forEach((log) => {
-    const loc = log.locationName || 'Al-Kufra Hydro Site';
+    const loc = log.locationName || 'Main Station';
     if (!stationMap[loc]) stationMap[loc] = { reg: 0, ot: 0 };
     const reg = Math.min(8, log.totalHours || 0);
     const ot = log.overtimeHours || 0;
@@ -489,11 +420,16 @@ export function getStationHoursDistribution(attendanceLogs: AttendanceLog[] = []
     stationMap[loc].ot += ot;
   });
 
+  const entries = Object.entries(stationMap);
+  if (entries.length === 0) {
+    return [];
+  }
+
   const colors = ['#606C38', '#D4A373', '#2A9D8F', '#E76F51', '#3D3028'];
   let totalAllHours = 0;
-  Object.values(stationMap).forEach((v) => (totalAllHours += v.reg + v.ot));
+  entries.forEach(([, v]) => (totalAllHours += v.reg + v.ot));
 
-  return Object.entries(stationMap).map(([name, data], idx) => {
+  return entries.map(([name, data], idx) => {
     const tot = data.reg + data.ot;
     const pct = totalAllHours > 0 ? Math.round((tot / totalAllHours) * 100) : 0;
     return {
@@ -515,20 +451,31 @@ export function getEmployeeRadarMetrics(
   tasks: Task[] = [],
   attendanceLogs: AttendanceLog[] = []
 ): EmployeeRadarMetrics[] {
-  const empList = team.length > 0 ? team : DEFAULT_EMPLOYEES;
+  const empList = team;
+
+  if (empList.length === 0) {
+    return [];
+  }
 
   return empList.map((emp) => {
-    const rnd = seedRandom(`radar-${emp.name}`);
-    const taskVelocity = Math.min(100, Math.round(85 + rnd * 14));
-    const punctuality = Math.min(100, Math.round(88 + rnd * 11));
-    const hoursConsistency = Math.min(100, Math.round(82 + rnd * 16));
-    const qualitySafety = Math.min(100, Math.round(90 + rnd * 9));
-    const collaboration = Math.min(100, Math.round(84 + rnd * 15));
+    const empTasks = tasks.filter((t) => t.assignee.name.toLowerCase().includes(emp.name.toLowerCase()));
+    const completedTasks = empTasks.filter((t) => t.status === 'done').length;
+    const taskVelocity = empTasks.length > 0 ? Math.round((completedTasks / empTasks.length) * 100) : 0;
+
+    const empLogs = attendanceLogs.filter((l) => l.userName.toLowerCase() === emp.name.toLowerCase());
+    const onTimeLogs = empLogs.filter((l) => l.status === 'clocked_in' || l.status === 'clocked_out');
+    const punctuality = empLogs.length > 0 ? Math.round((onTimeLogs.length / empLogs.length) * 100) : 0;
+
+    const totalHours = empLogs.reduce((a, b) => a + (b.totalHours || 0), 0);
+    const hoursConsistency = empLogs.length > 0 ? Math.min(100, Math.round((totalHours / (empLogs.length * 8)) * 100)) : 0;
+
+    const qualitySafety = empTasks.length > 0 ? (emp.performance || 90) : 0;
+    const collaboration = empTasks.length > 0 ? Math.min(100, empTasks.length * 20) : 0;
     const overallScore = Math.round((taskVelocity + punctuality + hoursConsistency + qualitySafety + collaboration) / 5);
 
     return {
       employeeName: emp.name,
-      avatar: emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      avatar: emp.avatar || '',
       role: emp.role || 'Field Lead',
       taskVelocity,
       punctuality,

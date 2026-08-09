@@ -153,49 +153,70 @@ export const saveAsyncJob = async (job: AsyncJob) => {
 };
 
 // ========================================================
-// DEMO SEEDING & CLEARING FUNCTIONS FOR /demo
+// DEMO SEEDING, STAMPING & CLEARING FUNCTIONS FOR /demo
 // ========================================================
 
-export const seedDemoDataToFirestore = async () => {
+export const stampDemoDataToFirestore = async () => {
   try {
+    // 1. Purge all existing data first
+    await clearFirestoreData();
+
+    const timestamp = new Date().toISOString();
+    let totalStamped = 0;
+
     for (const t of DEMO_TASKS) {
-      await setDoc(doc(db, 'tasks', t.id), t);
+      await setDoc(doc(db, 'tasks', t.id), { ...t, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const loc of DEMO_LOCATIONS) {
-      await setDoc(doc(db, 'locations', loc.id), loc);
+      await setDoc(doc(db, 'locations', loc.id), { ...loc, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const act of DEMO_ACTIVITIES) {
-      await setDoc(doc(db, 'activities', act.id), act);
+      await setDoc(doc(db, 'activities', act.id), { ...act, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const member of DEMO_TEAM) {
-      await setDoc(doc(db, 'team', member.id), member);
+      await setDoc(doc(db, 'team', member.id), { ...member, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const item of DEMO_TIMELINE) {
-      await setDoc(doc(db, 'timeline', item.id), item);
+      await setDoc(doc(db, 'timeline', item.id), { ...item, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const story of DEMO_STORIES) {
-      await setDoc(doc(db, 'stories', story.id), story);
+      await setDoc(doc(db, 'stories', story.id), { ...story, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const log of DEMO_ATTENDANCE) {
-      await setDoc(doc(db, 'attendance', log.id), log);
+      await setDoc(doc(db, 'attendance', log.id), { ...log, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
     for (const job of DEMO_ASYNC_JOBS) {
-      await setDoc(doc(db, 'async_jobs', job.id), job);
+      await setDoc(doc(db, 'async_jobs', job.id), { ...job, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
+      totalStamped++;
     }
-    return { success: true };
+
+    return { success: true, count: totalStamped, timestamp };
   } catch (err) {
-    console.error('Error seeding demo data to Firestore:', err);
+    console.error('Error stamping demo data into Firestore:', err);
     return { success: false, error: err };
   }
 };
 
+export const seedDemoDataToFirestore = stampDemoDataToFirestore;
+
 export const clearFirestoreData = async () => {
   try {
-    const collections = ['tasks', 'locations', 'activities', 'team', 'timeline', 'stories', 'attendance', 'async_jobs'];
+    const collections = ['tasks', 'locations', 'activities', 'team', 'timeline', 'stories', 'attendance', 'async_jobs', 'users'];
     for (const colName of collections) {
-      const snap = await getDocs(collection(db, colName));
-      for (const docSnap of snap.docs) {
-        await deleteDoc(doc(db, colName, docSnap.id));
+      try {
+        const snap = await getDocs(collection(db, colName));
+        for (const docSnap of snap.docs) {
+          await deleteDoc(doc(db, colName, docSnap.id));
+        }
+      } catch (colErr) {
+        console.warn(`Collection ${colName} clear warning:`, colErr);
       }
     }
     return { success: true };

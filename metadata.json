@@ -2,5 +2,7 @@
   "name": "Sahara Agile Workspace",
   "description": "A warm minimalist agile project management application.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

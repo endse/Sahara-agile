@@ -31,7 +31,7 @@ export interface GeneratedReport {
   deliveryStatus: 'delivered' | 'pending' | 'failed';
 }
 
-export function calculateProductivityMetrics(logs: Partial<AttendanceLog>[] = INITIAL_ATTENDANCE): ProductivityMetrics {
+export function calculateProductivityMetrics(logs: Partial<AttendanceLog>[] = []): ProductivityMetrics {
   const completedLogs = logs.filter((l) => l.status === 'clocked_out');
   const totalHoursLogged = Math.round(
     logs.reduce((acc, l) => acc + (l.totalHours || 0), 0) * 100
@@ -56,8 +56,8 @@ export function calculateProductivityMetrics(logs: Partial<AttendanceLog>[] = IN
 }
 
 export function calculateSprintVelocityMetrics(
-  stories: Partial<UserStory>[] = INITIAL_STORIES,
-  tasks: Partial<Task>[] = INITIAL_TASKS
+  stories: Partial<UserStory>[] = [],
+  tasks: Partial<Task>[] = []
 ): SprintVelocityMetrics {
   const totalStoryPoints = stories.reduce((acc, s) => acc + (s.points || 0), 0);
   const completedStoryPoints = stories
@@ -86,9 +86,9 @@ export function calculateSprintVelocityMetrics(
 }
 
 export function generateMidnightProductivityReport(
-  attendanceLogs: Partial<AttendanceLog>[] = INITIAL_ATTENDANCE,
-  stories: Partial<UserStory>[] = INITIAL_STORIES,
-  tasks: Partial<Task>[] = INITIAL_TASKS
+  attendanceLogs: Partial<AttendanceLog>[] = [],
+  stories: Partial<UserStory>[] = [],
+  tasks: Partial<Task>[] = []
 ): GeneratedReport {
   const productivity = calculateProductivityMetrics(attendanceLogs);
   const velocity = calculateSprintVelocityMetrics(stories, tasks);
