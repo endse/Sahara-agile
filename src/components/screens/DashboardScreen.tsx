@@ -120,7 +120,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
           <div className="max-w-md mx-auto space-y-1">
             <h3 className="text-base font-bold text-[#3D3028]">Production Workspace Ready</h3>
             <p className="text-xs text-[#8B5E3C]">
-              No active tasks found in your assigned team scope. Dispatch a new task to get started, or visit <strong className="text-[#3D3028]">/demo</strong> for feature demonstrations.
+              No active tasks found in your assigned team scope. Dispatch a new task or initialize a project site to get started.
             </p>
           </div>
           <div className="flex items-center justify-center gap-3 pt-1">
@@ -130,14 +130,6 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
             >
               <span className="material-symbols-outlined text-sm">add</span>
               <span>Dispatch Mission Task</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('Demo', 'none')}
-              className="px-4 py-2 bg-[#F3E9DC] hover:bg-[#E5D5C0] text-[#5C4D42] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm text-[#8B5E3C]">dataset</span>
-              <span>Demo Hub (/demo)</span>
             </button>
           </div>
         </div>

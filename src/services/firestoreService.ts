@@ -9,16 +9,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
-import {
-  DEMO_TASKS,
-  DEMO_LOCATIONS,
-  DEMO_ACTIVITIES,
-  DEMO_TEAM,
-  DEMO_TIMELINE,
-  DEMO_STORIES,
-  DEMO_ATTENDANCE,
-  DEMO_ASYNC_JOBS,
-} from '../data';
 
 // --- TASKS ---
 export const subscribeTasks = (onData: (tasks: Task[]) => void) => {
@@ -187,78 +177,4 @@ export const findInvitationByEmail = async (email: string): Promise<TeamInvitati
 
 export const acceptInvitation = async (inviteId: string) => {
   await updateDoc(doc(db, 'invitations', inviteId), { status: 'accepted' });
-};
-
-// ========================================================
-// DEMO SEEDING, STAMPING & CLEARING FUNCTIONS FOR /demo
-// ========================================================
-
-export const stampDemoDataToFirestore = async () => {
-  try {
-    // 1. Purge all existing data first
-    await clearFirestoreData();
-
-    const timestamp = new Date().toISOString();
-    let totalStamped = 0;
-
-    for (const t of DEMO_TASKS) {
-      await setDoc(doc(db, 'tasks', t.id), { ...t, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const loc of DEMO_LOCATIONS) {
-      await setDoc(doc(db, 'locations', loc.id), { ...loc, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const act of DEMO_ACTIVITIES) {
-      await setDoc(doc(db, 'activities', act.id), { ...act, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const member of DEMO_TEAM) {
-      await setDoc(doc(db, 'team', member.id), { ...member, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const item of DEMO_TIMELINE) {
-      await setDoc(doc(db, 'timeline', item.id), { ...item, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const story of DEMO_STORIES) {
-      await setDoc(doc(db, 'stories', story.id), { ...story, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const log of DEMO_ATTENDANCE) {
-      await setDoc(doc(db, 'attendance', log.id), { ...log, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-    for (const job of DEMO_ASYNC_JOBS) {
-      await setDoc(doc(db, 'async_jobs', job.id), { ...job, isStampedDemo: true, stampedAt: timestamp, stampedBy: 'Sahara Admin' });
-      totalStamped++;
-    }
-
-    return { success: true, count: totalStamped, timestamp };
-  } catch (err) {
-    console.error('Error stamping demo data into Firestore:', err);
-    return { success: false, error: err };
-  }
-};
-
-export const seedDemoDataToFirestore = stampDemoDataToFirestore;
-
-export const clearFirestoreData = async () => {
-  try {
-    const collections = ['tasks', 'locations', 'activities', 'team', 'timeline', 'stories', 'attendance', 'async_jobs', 'users'];
-    for (const colName of collections) {
-      try {
-        const snap = await getDocs(collection(db, colName));
-        for (const docSnap of snap.docs) {
-          await deleteDoc(doc(db, colName, docSnap.id));
-        }
-      } catch (colErr) {
-        console.warn(`Collection ${colName} clear warning:`, colErr);
-      }
-    }
-    return { success: true };
-  } catch (err) {
-    console.error('Error clearing Firestore data:', err);
-    return { success: false, error: err };
-  }
 };

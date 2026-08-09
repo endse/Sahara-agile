@@ -10,14 +10,6 @@ import {
   INITIAL_STORIES,
   INITIAL_ATTENDANCE,
   INITIAL_ASYNC_JOBS,
-  DEMO_TASKS,
-  DEMO_ACTIVITIES,
-  DEMO_TEAM,
-  DEMO_TIMELINE,
-  DEMO_LOCATIONS,
-  DEMO_STORIES,
-  DEMO_ATTENDANCE,
-  DEMO_ASYNC_JOBS,
 } from './data';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -35,8 +27,6 @@ import {
   subscribeStories,
   subscribeAttendance,
   subscribeAsyncJobs,
-  seedDemoDataToFirestore,
-  clearFirestoreData,
 } from './services/firestoreService';
 import { SidebarNavigation } from './components/SidebarNavigation';
 import { TopHeader } from './components/TopHeader';
@@ -58,8 +48,6 @@ import { AttendanceLogScreen } from './components/screens/AttendanceLogScreen';
 import { AsyncReportsScreen } from './components/screens/AsyncReportsScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { PerformanceAnalyticsScreen } from './components/screens/PerformanceAnalyticsScreen';
-import { DemoDataScreen } from './components/screens/DemoDataScreen';
-import { InteractiveWalkthrough } from './components/InteractiveWalkthrough';
 import { SecurityNotesModal } from './components/SecurityNotesModal';
 import { RbacGuard } from './components/RbacGuard';
 import {
@@ -84,34 +72,6 @@ function AppContent() {
     }
   }, [user, currentScreen]);
 
-  // Walkthrough Modal State
-  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
-  const [walkthroughRole, setWalkthroughRole] = useState<'Manager' | 'Employee'>(activeRole);
-
-  // Keep walkthrough role synced with activeRole
-  useEffect(() => {
-    setWalkthroughRole(activeRole);
-  }, [activeRole]);
-
-  // Handle URL Path & Hash Navigation for /demo
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      if (path === '/demo' || hash === '#demo' || hash === '#/demo') {
-        setCurrentScreen('Demo');
-      }
-    };
-
-    handleUrlChange();
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
-    };
-  }, []);
-
   // Application State backed by Firestore
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [activities, setActivities] = useState<Activity[]>(INITIAL_ACTIVITIES);
@@ -122,34 +82,6 @@ function AppContent() {
   const [attendanceLogs, setAttendanceLogs] = useState<import('./types').AttendanceLog[]>(INITIAL_ATTENDANCE);
   const [asyncJobs, setAsyncJobs] = useState<import('./types').AsyncJob[]>(INITIAL_ASYNC_JOBS);
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null);
-
-  // Seed Demo Data into State & Firestore
-  const handleSeedDemoData = async () => {
-    setTasks(DEMO_TASKS);
-    setActivities(DEMO_ACTIVITIES);
-    setTeam(DEMO_TEAM);
-    setTimeline(DEMO_TIMELINE);
-    setLocations(DEMO_LOCATIONS);
-    setStories(DEMO_STORIES);
-    setAttendanceLogs(DEMO_ATTENDANCE);
-    setAsyncJobs(DEMO_ASYNC_JOBS);
-    setSelectedTask(DEMO_TASKS[0]);
-    await seedDemoDataToFirestore();
-  };
-
-  // Clear All Data (Reset to Empty State)
-  const handleClearAllData = async () => {
-    setTasks([]);
-    setActivities([]);
-    setTeam([]);
-    setTimeline([]);
-    setLocations([]);
-    setStories([]);
-    setAttendanceLogs([]);
-    setAsyncJobs([]);
-    setSelectedTask(null);
-    await clearFirestoreData();
-  };
 
   // Real-time Firestore Subscriptions
   useEffect(() => {
@@ -534,7 +466,6 @@ function AppContent() {
     Profile: 'Dynamic operator profile, credentials, and field station assignment',
     SignUp: 'Field operator credential authentication',
     PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics',
-    Demo: 'Demo Data & Team Showcase Hub (/demo)'
   };
 
   const isFullModalScreen = currentScreen === 'Landing' || currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
@@ -548,7 +479,6 @@ function AppContent() {
           onNavigate={handleNavigate}
           isOpenMobile={isMobileNavOpen}
           onCloseMobile={() => setIsMobileNavOpen(false)}
-          onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         />
       )}
 
@@ -562,7 +492,6 @@ function AppContent() {
             onNavigate={handleNavigate}
             onOpenMobileMenu={() => setIsMobileNavOpen(true)}
             onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
-            onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
             tasks={scopedTasks}
             onSelectTask={setSelectedTask}
             managedSector={managedSector}
@@ -754,38 +683,9 @@ function AppContent() {
                   onNavigate={handleNavigate}
                 />
               )}
-
-              {currentScreen === 'Demo' && (
-                <DemoDataScreen
-                  onNavigate={handleNavigate}
-                  onSeedDemoData={handleSeedDemoData}
-                  onClearAllData={handleClearAllData}
-                  onStartWalkthrough={(role) => {
-                    setWalkthroughRole(role);
-                    setIsWalkthroughOpen(true);
-                  }}
-                  tasksCount={tasks.length}
-                  teamCount={team.length}
-                  activeRole={activeRole}
-                  onSwitchRole={switchActiveRole}
-                />
-              )}
             </motion.div>
           </AnimatePresence>
         </main>
-
-        {/* Global Interactive Guided Walkthrough Modal */}
-        <InteractiveWalkthrough
-          isOpen={isWalkthroughOpen}
-          onClose={() => setIsWalkthroughOpen(false)}
-          activeRole={walkthroughRole}
-          onSwitchRole={(newRole) => {
-            setWalkthroughRole(newRole);
-            switchActiveRole(newRole);
-          }}
-          onNavigate={handleNavigate}
-          onSeedDemoData={handleSeedDemoData}
-        />
       </div>
     </div>
   );

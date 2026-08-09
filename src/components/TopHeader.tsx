@@ -145,27 +145,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </div>
 
-        {/* Interactive Walkthrough Tour Trigger */}
-        {onOpenWalkthrough && (
-          <button
-            onClick={onOpenWalkthrough}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#8B5E3C] hover:bg-[#6f492e] text-white text-xs font-bold transition-all shadow-2xs"
-            title="Launch Interactive Guided Walkthrough"
-          >
-            <span className="material-symbols-outlined text-base text-amber-300">route</span>
-            <span className="hidden sm:inline">Guided Tour</span>
-          </button>
-        )}
 
-        {/* /demo Hub Button */}
-        <button
-          onClick={() => onNavigate('Demo', 'none')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-900 hover:bg-stone-800 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-2xs"
-          title="Open Demo Data & Team Showcase Hub (/demo)"
-        >
-          <span className="material-symbols-outlined text-base">dataset</span>
-          <span>/demo</span>
-        </button>
 
         {/* Security Policy & RBAC Notes Modal Trigger */}
         <button

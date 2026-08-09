@@ -54,7 +54,7 @@ export const SecurityNotesModal: React.FC<SecurityNotesModalProps> = ({
               <span>Authenticated Role Credentials:</span>
             </p>
             <p className="text-[11px] text-stone-300 mt-0.5">
-              Role permissions are strictly tied to authenticated credentials. Role switching is restricted to the <code className="text-amber-400">/demo</code> sandbox page.
+              Role permissions are strictly tied to authenticated user profile credentials in Firestore.
             </p>
           </div>
 

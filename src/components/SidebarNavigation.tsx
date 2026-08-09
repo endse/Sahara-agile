@@ -23,7 +23,6 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
     { id: 'TeamSync' as ScreenId, label: 'Team Sync', icon: 'groups', isManagerOnly: false },
     { id: 'AttendanceLog' as ScreenId, label: 'Attendance & Clock', icon: 'schedule', isManagerOnly: false },
     { id: 'AsyncReports' as ScreenId, label: 'Async Reports', icon: 'memory', isManagerOnly: true },
-    { id: 'Demo' as ScreenId, label: 'Demo Hub (/demo)', icon: 'dataset', isManagerOnly: false },
   ];
 
   const handleNavClick = (screen: ScreenId) => {
@@ -159,15 +158,6 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
 
         {/* Secondary Links & Profile */}
         <div className="p-4 border-t border-[#E5D5C0] space-y-1.5">
-          {onOpenWalkthrough && (
-            <button
-              onClick={onOpenWalkthrough}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-amber-500/15 text-amber-900 border border-amber-500/30 hover:bg-amber-500/25 transition-all shadow-2xs"
-            >
-              <span className="material-symbols-outlined text-xl text-amber-700">route</span>
-              <span>Guided Tour</span>
-            </button>
-          )}
 
           <button
             onClick={() => onNavigate('Profile', 'none')}

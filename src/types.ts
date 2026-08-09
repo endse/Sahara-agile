@@ -15,20 +15,7 @@ export type ScreenId =
   | 'TaskBoardActivity'
   | 'Profile'
   | 'SignUp'
-  | 'PerformanceAnalytics'
-  | 'Demo';
-
-export type WalkthroughRole = 'Manager' | 'Employee';
-
-export interface WalkthroughStep {
-  title: string;
-  subtitle: string;
-  description: string;
-  bullets: string[];
-  targetScreen?: ScreenId;
-  actionLabel?: string;
-  icon: string;
-}
+  | 'PerformanceAnalytics';
 
 
 export interface UserProfile {
