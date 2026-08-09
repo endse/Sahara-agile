@@ -69,19 +69,19 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
       status,
       priority,
       assignee: {
-        name: chosenAssignee.name,
-        avatar: chosenAssignee.avatar,
-        role: chosenAssignee.role
+        name: chosenAssignee?.name || 'Unassigned',
+        avatar: chosenAssignee?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        role: chosenAssignee?.role || 'Field Operator'
       },
       dueDate,
       progress: 0,
       tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
       description,
-      region: chosenLocation.region,
+      region: chosenLocation?.region || 'Global',
       location: {
-        lat: chosenLocation.coordinates.lat,
-        lng: chosenLocation.coordinates.lng,
-        label: chosenLocation.name
+        lat: chosenLocation?.coordinates?.lat || 0,
+        lng: chosenLocation?.coordinates?.lng || 0,
+        label: chosenLocation?.name || 'Unspecified Location'
       },
       updatedAt: 'Just now',
       timeSpent: '0h',
