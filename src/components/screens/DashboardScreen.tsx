@@ -234,6 +234,31 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         </div>
       )}
 
+      {/* Monthly Performance & Check-In/Out Analytics Quick Access Banner */}
+      <div className="bg-gradient-to-r from-[#F3E9DC] to-[#FDF8F3] border border-[#E5D5C0] rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#D4A373] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <span className="material-symbols-outlined text-2xl">insights</span>
+          </div>
+          <div>
+            <h3 className="font-headline text-lg font-bold text-[#3D3028]">
+              Monthly Employee Performance & Check-In Graphs
+            </h3>
+            <p className="text-xs text-[#8B5E3C] mt-0.5">
+              31-day shift clock trajectories, performance scores, attendance heatmaps, and burndown charts for August 2026.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onNavigate('PerformanceAnalytics', 'none')}
+          className="px-5 py-2.5 bg-[#3D3028] hover:bg-[#2D241E] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-xs transition-colors shrink-0"
+        >
+          <span className="material-symbols-outlined text-base">bar_chart</span>
+          <span>Open Full Analytics Dashboard</span>
+        </button>
+      </div>
+
       {/* Main Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left 2 Columns: Priority Tasks & Map Preview */}

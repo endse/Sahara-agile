@@ -14,6 +14,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
 
   const navItems = [
     { id: 'Dashboard' as ScreenId, label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
+    { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics & Graphs', icon: 'insights', isManagerOnly: false },
     { id: 'TaskBoard' as ScreenId, label: 'Task Board', icon: 'view_kanban', isManagerOnly: false },
     { id: 'UserStories' as ScreenId, label: 'User Stories', icon: 'auto_stories', isManagerOnly: true },
     { id: 'ProjectTimeline' as ScreenId, label: 'Project Timeline', icon: 'timeline', isManagerOnly: false },

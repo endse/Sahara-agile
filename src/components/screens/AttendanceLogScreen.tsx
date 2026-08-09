@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AttendanceLog, TeamMember } from '../../types';
 import { saveAttendanceLog } from '../../services/firestoreService';
 import { useAuth } from '../../context/AuthContext';
+import { CheckInOutMonthlyChart } from '../charts/CheckInOutMonthlyChart';
+import { getMonthlyCheckInOutData } from '../../services/monthlyAnalyticsService';
 
 interface AttendanceLogScreenProps {
   attendanceLogs: AttendanceLog[];
@@ -23,7 +25,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
 
   // Navigation Sub-Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'manager_oversight' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'manager_oversight' | 'reports' | 'monthly_charts'>('overview');
 
   // Filters
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
@@ -409,6 +411,18 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
               </button>
             </>
           )}
+
+          <button
+            onClick={() => setActiveTab('monthly_charts')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'monthly_charts'
+                ? 'bg-[#D4A373] text-[#2D241E] shadow-xs'
+                : 'bg-white/60 text-[#8B5E3C] hover:bg-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">insights</span>
+            <span>Monthly Check-In / Out Graph (31 Days)</span>
+          </button>
         </div>
 
         {/* KPI Metrics Dashboard Cards */}
@@ -935,6 +949,34 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB 4: MONTHLY CHECK-IN / CHECK-OUT GRAPH & FULL VISUALIZATIONS */}
+        {activeTab === 'monthly_charts' && (
+          <div className="space-y-6">
+            <div className="bg-[#606C38]/10 border border-[#606C38]/20 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-xs text-[#3D3028]">
+                <span className="material-symbols-outlined text-xl text-[#606C38]">analytics</span>
+                <span>
+                  Viewing 31-day shift arrival & departure trends. For full multi-employee performance analytics, open the dedicated Analytics workspace.
+                </span>
+              </div>
+              <button
+                onClick={() => onNavigate('PerformanceAnalytics')}
+                className="bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shrink-0 transition-colors shadow-2xs"
+              >
+                <span>Full Analytics Dashboard</span>
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            </div>
+
+            <CheckInOutMonthlyChart
+              data={getMonthlyCheckInOutData(2026, 8, selectedEmployee, attendanceLogs, team)}
+              selectedEmployee={selectedEmployee}
+              monthName="August"
+              year={2026}
+            />
           </div>
         )}
 

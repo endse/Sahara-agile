@@ -45,6 +45,7 @@ import { UserStoriesScreen } from './components/screens/UserStoriesScreen';
 import { AttendanceLogScreen } from './components/screens/AttendanceLogScreen';
 import { AsyncReportsScreen } from './components/screens/AsyncReportsScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
+import { PerformanceAnalyticsScreen } from './components/screens/PerformanceAnalyticsScreen';
 import { SecurityNotesModal } from './components/SecurityNotesModal';
 import { RbacGuard } from './components/RbacGuard';
 
@@ -267,7 +268,8 @@ function AppContent() {
     NewProject: 'Register new field site or infrastructure project',
     TaskBoardActivity: 'Task inspector with live telemetry activity feed',
     Profile: 'Dynamic operator profile, credentials, and field station assignment',
-    SignUp: 'Field operator credential authentication'
+    SignUp: 'Field operator credential authentication',
+    PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics'
   };
 
   const isFullModalScreen = currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
@@ -376,6 +378,16 @@ function AppContent() {
 
               {currentScreen === 'AttendanceLog' && (
                 <AttendanceLogScreen
+                  attendanceLogs={attendanceLogs}
+                  team={team}
+                  onOpenMobileMenu={() => setIsMobileNavOpen(true)}
+                  onNavigate={handleNavigate}
+                />
+              )}
+
+              {currentScreen === 'PerformanceAnalytics' && (
+                <PerformanceAnalyticsScreen
+                  tasks={tasks}
                   attendanceLogs={attendanceLogs}
                   team={team}
                   onOpenMobileMenu={() => setIsMobileNavOpen(true)}

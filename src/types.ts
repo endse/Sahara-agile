@@ -13,7 +13,8 @@ export type ScreenId =
   | 'AsyncReports'
   | 'TaskBoardActivity'
   | 'Profile'
-  | 'SignUp';
+  | 'SignUp'
+  | 'PerformanceAnalytics';
 
 export interface UserProfile {
   uid: string;
