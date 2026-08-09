@@ -236,10 +236,10 @@ Automated pipeline running on `push` and `pull_request` to `main` and `master`:
    - **Playwright End-to-End (E2E) Testing:** Installs Chromium dependencies (`npx playwright install --with-deps chromium`) and runs `npm run test:e2e` across 7 browser test specs.
    - **Production Bundling:** Compiles client Vite SPA and Express Node CJS bundle (`npm run build`).
    - **Artifact Upload:** Uploads `dist/` bundle and `playwright-report/` artifacts to GitHub Actions storage.
-2. **`deploy` Job:**
+2. **`deploy` Job (Placeholder):**
    - Downloads compiled production artifacts.
    - Verifies bundle integrity (`dist/index.html`, `dist/server.cjs`).
-   - Deploys release and logs step summary reports to `$GITHUB_STEP_SUMMARY`.
+   - **Note:** Currently configured as a simulated placeholder. To deploy via Actions, replace the echo commands with the `vercel deploy` CLI commands (see Section 7) or use Vercel's native GitHub app integration.
 
 ---
 
@@ -290,16 +290,26 @@ npm start
 
 Sahara Agile Works is pre-configured for seamless Vercel Serverless Functions deployment using `vercel.json` and `api/index.ts`.
 
-### Deploying via Vercel CLI
+### Option A: Deploying via Vercel GitHub App Integration (Recommended)
+This is the standard approach. It bypasses the GitHub Action deploy job entirely.
+1. Push your repository to GitHub.
+2. Import the project into the Vercel Dashboard.
+3. Vercel automatically detects `vercel.json` and deploys on every push.
+
+### Option B: Deploying via GitHub Actions CI/CD Pipeline
+If you prefer strict CI/CD control, you must update the placeholder `deploy` job in `.github/workflows/ci-cd.yml` to use the Vercel CLI.
+1. Generate a Vercel Access Token and retrieve your Project/Org ID.
+2. Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` to your GitHub Repository Secrets.
+3. Update the `ci-cd.yml` run step:
+   ```yaml
+   npx vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+   ```
+
+### Option C: Deploying via Vercel CLI (Local)
 ```bash
 npm i -g vercel
 vercel --prod
 ```
-
-### Deploying via GitHub Integration
-1. Push repository to GitHub.
-2. Import project into Vercel Dashboard.
-3. Vercel automatically detects `vercel.json`, hosting the Vite React SPA on Vercel Edge CDN and wrapping Express `/api/*` endpoints as Node.js Serverless Functions.
 
 ---
 
