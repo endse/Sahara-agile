@@ -52,6 +52,7 @@ import { NewTaskScreen } from './components/screens/NewTaskScreen';
 import { NewProjectScreen } from './components/screens/NewProjectScreen';
 import { TaskBoardActivityScreen } from './components/screens/TaskBoardActivityScreen';
 import { SignUpScreen } from './components/screens/SignUpScreen';
+import { LandingScreen } from './components/screens/LandingScreen';
 import { UserStoriesScreen } from './components/screens/UserStoriesScreen';
 import { AttendanceLogScreen } from './components/screens/AttendanceLogScreen';
 import { AsyncReportsScreen } from './components/screens/AsyncReportsScreen';
@@ -70,11 +71,18 @@ import {
 } from './lib/teamScopeUtils';
 
 function AppContent() {
-  const { userProfile, activeRole, switchActiveRole } = useAuth();
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('Dashboard');
+  const { user, userProfile, activeRole, switchActiveRole } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>(user ? 'Dashboard' : 'Landing');
   const [transition, setTransition] = useState<TransitionType>('none');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+
+  // Auto-redirect logged-in users away from Landing or SignUp to Dashboard
+  useEffect(() => {
+    if (user && (currentScreen === 'Landing' || currentScreen === 'SignUp')) {
+      setCurrentScreen('Dashboard');
+    }
+  }, [user, currentScreen]);
 
   // Walkthrough Modal State
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
@@ -333,30 +341,142 @@ function AppContent() {
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
-    setTasks(prev =>
-      prev.map(t => {
-        if (t.id === taskId) {
-          return { ...t, status: newStatus, progress: newStatus === 'done' ? 100 : t.progress };
-        }
-        return t;
-      })
-    );
-    await updateTaskStatus(taskId, newStatus);
+    const taskObj = tasks.find((t) => t.id === taskId);
+    if (!taskObj) return;
 
-    const taskObj = tasks.find(t => t.id === taskId);
-    if (taskObj) {
+    if (activeRole === 'Employee') {
+      // Employee request status update -> Sets approvalStatus to 'pending_approval' and logs approval request
+      const updatedTask: Task = {
+        ...taskObj,
+        approvalStatus: 'pending_approval',
+        pendingStatus: newStatus,
+        statusRequestedBy: userProfile?.displayName || 'Field Operator',
+        statusRequestedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+      await saveTask(updatedTask);
+
       const newAct: Activity = {
         id: `ACT-${Date.now()}`,
-        user: userProfile?.displayName || 'Amara Vance',
-        avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        action: 'updated status of',
-        target: `${taskObj.code} to ${newStatus.replace('_', ' ')}`,
+        user: userProfile?.displayName || 'Field Operator',
+        avatar:
+          userProfile?.photoURL ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        action: 'requested task status approval',
+        target: `${taskObj.code} (${taskObj.title})`,
         time: 'Just now',
-        type: 'status'
+        type: 'approval_request',
+        detail: `Requested status change to "${newStatus.toUpperCase()}". Awaiting Manager Approval.`,
+        taskId: taskObj.id,
+        requiresManagerApproval: true,
+        approvalStatus: 'pending',
+        pendingStatus: newStatus,
       };
-      setActivities(a => [newAct, ...a]);
+
+      setActivities((prev) => [newAct, ...prev]);
+      await saveActivity(newAct);
+    } else {
+      // Manager directly updates status
+      const updatedTask: Task = {
+        ...taskObj,
+        status: newStatus,
+        approvalStatus: 'approved',
+        pendingStatus: undefined,
+        progress: newStatus === 'done' ? 100 : taskObj.progress,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+      await saveTask(updatedTask);
+
+      const newAct: Activity = {
+        id: `ACT-${Date.now()}`,
+        user: userProfile?.displayName || 'Operations Manager',
+        avatar:
+          userProfile?.photoURL ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        action: 'updated task status',
+        target: `${taskObj.code} (${taskObj.title})`,
+        time: 'Just now',
+        type: 'status',
+        detail: `Moved from ${taskObj.status.toUpperCase()} to ${newStatus.toUpperCase()}`,
+        taskId: taskObj.id,
+      };
+
+      setActivities((prev) => [newAct, ...prev]);
       await saveActivity(newAct);
     }
+  };
+
+  const handleApproveTaskStatus = async (taskId: string) => {
+    const taskObj = tasks.find((t) => t.id === taskId);
+    if (!taskObj) return;
+
+    const approvedStatus = taskObj.pendingStatus || taskObj.status;
+    const updatedTask: Task = {
+      ...taskObj,
+      status: approvedStatus,
+      approvalStatus: 'approved',
+      pendingStatus: undefined,
+      progress: approvedStatus === 'done' ? 100 : taskObj.progress,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+    await saveTask(updatedTask);
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userProfile?.displayName || 'Operations Manager',
+      avatar:
+        userProfile?.photoURL ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      action: 'approved task status change',
+      target: `${taskObj.code} (${taskObj.title})`,
+      time: 'Just now',
+      type: 'status',
+      detail: `Approved status change to "${approvedStatus.toUpperCase()}" requested by ${
+        taskObj.statusRequestedBy || 'Employee'
+      }`,
+      taskId: taskObj.id,
+    };
+
+    setActivities((prev) => [newAct, ...prev]);
+    await saveActivity(newAct);
+  };
+
+  const handleRejectTaskStatus = async (taskId: string) => {
+    const taskObj = tasks.find((t) => t.id === taskId);
+    if (!taskObj) return;
+
+    const updatedTask: Task = {
+      ...taskObj,
+      approvalStatus: 'rejected',
+      pendingStatus: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+    await saveTask(updatedTask);
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userProfile?.displayName || 'Operations Manager',
+      avatar:
+        userProfile?.photoURL ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      action: 'rejected task status change',
+      target: `${taskObj.code} (${taskObj.title})`,
+      time: 'Just now',
+      type: 'status',
+      detail: `Declined status change request for task "${taskObj.title}"`,
+      taskId: taskObj.id,
+    };
+
+    setActivities((prev) => [newAct, ...prev]);
+    await saveActivity(newAct);
   };
 
   // Motion variants for transition types
@@ -397,6 +517,7 @@ function AppContent() {
   };
 
   const screenSubtitles: Record<ScreenId, string> = {
+    Landing: 'Enterprise Field Operations & Infrastructure Workspace',
     Dashboard: 'Sector 04 Live Operational Overview & Metrics',
     GlobalSearch: 'Cross-index query engine for tasks, sites, and team members',
     ProjectTimeline: 'Strategic roadmap and milestone phase progression',
@@ -416,7 +537,7 @@ function AppContent() {
     Demo: 'Demo Data & Team Showcase Hub (/demo)'
   };
 
-  const isFullModalScreen = currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
+  const isFullModalScreen = currentScreen === 'Landing' || currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
 
   return (
     <div className="min-h-screen bg-[#FDF8F3] text-[#3D3028] flex flex-col lg:flex-row antialiased selection:bg-[#D4A373] selection:text-white">
@@ -469,6 +590,10 @@ function AppContent() {
               transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               className="w-full h-full"
             >
+              {currentScreen === 'Landing' && (
+                <LandingScreen onNavigate={handleNavigate} />
+              )}
+
               {currentScreen === 'Dashboard' && (
                 <DashboardScreen
                   tasks={scopedTasks}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenId } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
@@ -6,16 +6,64 @@ interface SignUpProps {
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up' | 'slide_down') => void;
 }
 
+const getFriendlyAuthErrorMessage = (err: any): string => {
+  if (!err) return 'An error occurred during authentication.';
+  const code = err?.code || '';
+  const msg = err?.message || '';
+
+  if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'An account with this email already exists. Please switch to "Sign In" or use another email.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password is too weak. Please enter at least 6 characters.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address.';
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Google sign-in popup was closed before completing.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Google sign-in popup was blocked by browser. Please enable popups and try again.';
+  }
+  if (typeof msg === 'string' && msg.includes('auth/')) {
+    return msg.replace(/^Firebase:\*?\s*/i, '').replace(/\(auth\/[^)]+\)\.?/g, '').trim();
+  }
+  return msg || 'Authentication failed. Please check your details and try again.';
+};
+
 export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAsGuest } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+  const [signupType, setSignupType] = useState<'employee' | 'manager_create_team'>('manager_create_team');
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldRole, setFieldRole] = useState('Hydro-Geologist');
+  const [teamName, setTeamName] = useState('');
+
+  const [hasInviteNotice, setHasInviteNotice] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteEmail = params.get('inviteEmail');
+    const invitedTeam = params.get('team');
+    if (inviteEmail) {
+      setEmail(inviteEmail);
+      setSignupType('employee');
+      setHasInviteNotice(true);
+    }
+    if (invitedTeam) {
+      setTeamName(invitedTeam);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,16 +71,53 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
     setIsSubmitting(true);
     try {
       if (mode === 'signup') {
-        await signUpWithEmail(email, password, fullName, fieldRole);
+        if (!fullName.trim()) {
+          throw new Error('Please enter your full name.');
+        }
+        if (!email.trim() || !email.includes('@')) {
+          throw new Error('Please enter a valid email address.');
+        }
+        if (password.length < 6) {
+          throw new Error('Password must be at least 6 characters long.');
+        }
+
+        if (signupType === 'manager_create_team') {
+          if (!teamName.trim()) {
+            throw new Error('Please enter a valid Team Name for your organization.');
+          }
+          await signUpWithEmail(
+            email.trim(),
+            password,
+            fullName.trim(),
+            'Operations Manager',
+            teamName.trim(),
+            true
+          );
+        } else {
+          await signUpWithEmail(
+            email.trim(),
+            password,
+            fullName.trim(),
+            fieldRole || 'Field Technician',
+            teamName.trim() || 'Sahara Primary Sector',
+            false
+          );
+        }
       } else {
-        await signInWithEmail(email, password);
+        if (!email.trim() || !email.includes('@')) {
+          throw new Error('Please enter a valid email address.');
+        }
+        if (!password) {
+          throw new Error('Please enter your password.');
+        }
+        await signInWithEmail(email.trim(), password);
       }
       setSubmitted(true);
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
-      }, 1000);
+      }, 800);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Authentication failed. Please check your credentials.');
+      setErrorMsg(getFriendlyAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -42,26 +127,32 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
     setErrorMsg('');
     setIsSubmitting(true);
     try {
-      await signInWithGoogle();
+      if (mode === 'signup' && signupType === 'manager_create_team') {
+        if (!teamName.trim()) {
+          throw new Error('Please enter a valid Team Name before registering with Google.');
+        }
+        await signInWithGoogle(
+          fullName.trim() || undefined,
+          'Operations Manager',
+          teamName.trim(),
+          true
+        );
+      } else if (mode === 'signup') {
+        await signInWithGoogle(
+          fullName.trim() || undefined,
+          fieldRole || 'Field Technician',
+          teamName.trim() || undefined,
+          false
+        );
+      } else {
+        await signInWithGoogle();
+      }
       setSubmitted(true);
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
-      }, 1000);
+      }, 800);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Google authentication failed.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGuestSignIn = async () => {
-    setErrorMsg('');
-    setIsSubmitting(true);
-    try {
-      await signInAsGuest();
-      onNavigate('Dashboard', 'slide_down');
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Guest login failed.');
+      setErrorMsg(getFriendlyAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,28 +170,43 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
             S
           </div>
           <h1 className="font-headline text-3xl font-light text-[#2D241E]">Sahara Agile Workspace</h1>
-          <p className="text-xs text-[#8B5E3C]">Authenticate field credentials or register new operator identity</p>
+          <p className="text-xs text-[#8B5E3C]">Authenticate field credentials or register operator identity</p>
         </div>
 
-        {/* Mode Selector */}
+        {/* Invitation Link Detected Notice */}
+        {hasInviteNotice && (
+          <div className="p-3.5 bg-[#FEFAE0] border border-[#E9EDC9] rounded-2xl flex items-start gap-3 text-xs text-[#606C38]">
+            <span className="material-symbols-outlined text-lg text-[#606C38] shrink-0">mark_email_read</span>
+            <div>
+              <span className="font-bold block">Manager Invitation Link Detected!</span>
+              <p className="text-[11px] opacity-90 mt-0.5">
+                Signing up with <span className="font-mono font-bold text-[#3D3028]">{email}</span> will automatically verify your invitation and link you to your assigned team in Firestore.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Primary Mode Switcher (Sign Up vs Sign In) */}
         <div className="flex bg-[#FDF8F3] p-1 rounded-full border border-[#E5D5C0]">
           <button
+            type="button"
             onClick={() => {
               setMode('signup');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2 rounded-full text-xs font-medium transition-colors ${
+            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-colors ${
               mode === 'signup' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
             }`}
           >
             Create Account
           </button>
           <button
+            type="button"
             onClick={() => {
               setMode('signin');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2 rounded-full text-xs font-medium transition-colors ${
+            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-colors ${
               mode === 'signin' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
             }`}
           >
@@ -119,12 +225,17 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
           <div className="p-6 bg-[#FEFAE0] border border-[#E9EDC9] text-[#606C38] rounded-2xl text-center space-y-2">
             <span className="material-symbols-outlined text-4xl text-[#606C38]">verified_user</span>
             <h3 className="font-headline text-xl font-semibold">Authentication Successful!</h3>
-            <p className="text-xs text-[#606C38]">Redirecting to Live Operations Dashboard...</p>
+            <p className="text-xs text-[#606C38]">
+              {signupType === 'manager_create_team'
+                ? 'Team created! Setting up Manager Dashboard...'
+                : 'Registered as Employee! Redirecting to Workspace...'}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Quick OAuth Button */}
             <button
+              type="button"
               onClick={handleGoogleSignIn}
               disabled={isSubmitting}
               className="w-full bg-[#FDF8F3] hover:bg-white text-[#3D3028] border border-[#E5D5C0] py-3 rounded-full text-xs font-semibold flex items-center justify-center gap-3 transition-colors shadow-2xs"
@@ -156,6 +267,52 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
               <div className="flex-1 h-px bg-[#E5D5C0]" />
             </div>
 
+            {/* Signup Type Sub-Toggle */}
+            {mode === 'signup' && (
+              <div className="p-3 bg-[#FDF8F3] border border-[#E5D5C0] rounded-2xl space-y-3">
+                <span className="text-[11px] font-bold text-[#3D3028] uppercase tracking-wider block">
+                  Account Onboarding Type:
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSignupType('employee')}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      signupType === 'employee'
+                        ? 'bg-white border-[#606C38] ring-2 ring-[#606C38]/20 shadow-xs'
+                        : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#8B5E3C] hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-[#3D3028]">
+                      <span className="material-symbols-outlined text-sm text-[#606C38]">person</span>
+                      <span>Join as Employee</span>
+                    </div>
+                    <p className="text-[10px] text-[#8B5E3C] mt-1 leading-tight">
+                      Default role. Join existing team or respond to Manager invite.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignupType('manager_create_team')}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      signupType === 'manager_create_team'
+                        ? 'bg-white border-[#D4A373] ring-2 ring-[#D4A373]/20 shadow-xs'
+                        : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#8B5E3C] hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-[#3D3028]">
+                      <span className="material-symbols-outlined text-sm text-[#D4A373]">groups</span>
+                      <span>Create a New Team</span>
+                    </div>
+                    <p className="text-[10px] text-[#8B5E3C] mt-1 leading-tight">
+                      First time setup. Register team & gain Team Manager role.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'signup' && (
                 <div className="space-y-1.5">
@@ -171,20 +328,40 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                 </div>
               )}
 
+              {mode === 'signup' && signupType === 'manager_create_team' && (
+                <div className="space-y-1.5 bg-[#FEFAE0] border border-[#E9EDC9] p-3 rounded-2xl">
+                  <label className="text-xs font-bold text-[#606C38] uppercase flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">badge</span>
+                    <span>New Team / Organization Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="e.g. Sahara Solar & Water Team 4"
+                    className="w-full bg-white border border-[#E5D5C0] focus:border-[#606C38] rounded-full px-4 py-2.5 text-xs font-semibold text-[#3D3028] outline-none"
+                  />
+                  <p className="text-[10px] text-[#606C38]">
+                    Creating a team makes you the designated Team Manager with full administrative & task approval rights.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#3D3028] uppercase">SatCom Email Address</label>
+                <label className="text-xs font-bold text-[#3D3028] uppercase">Email Address</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="a.vance@sahara-agile.org"
+                  placeholder="operator@sahara-agile.org"
                   className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#3D3028] uppercase">Access Key / Password</label>
+                <label className="text-xs font-bold text-[#3D3028] uppercase">Password</label>
                 <input
                   type="password"
                   required
@@ -195,7 +372,7 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                 />
               </div>
 
-              {mode === 'signup' && (
+              {mode === 'signup' && signupType === 'employee' && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#3D3028] uppercase">Field Specialty</label>
                   <select
@@ -203,11 +380,11 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                     onChange={(e) => setFieldRole(e.target.value)}
                     className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-3 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
                   >
-                    <option>Hydro-Geologist</option>
-                    <option>Grid Architect</option>
-                    <option>Robotics Engineer</option>
-                    <option>Ecologist</option>
-                    <option>SatCom Specialist</option>
+                    <option value="Hydro-Geologist">Hydro-Geologist</option>
+                    <option value="Grid Architect">Grid Architect</option>
+                    <option value="Robotics Engineer">Robotics Engineer</option>
+                    <option value="Ecologist">Ecologist</option>
+                    <option value="SatCom Specialist">SatCom Specialist</option>
                   </select>
                 </div>
               )}
@@ -218,7 +395,13 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                   disabled={isSubmitting}
                   className="w-full bg-[#606C38] hover:bg-[#4d572d] text-white py-3.5 rounded-full text-xs font-medium shadow-sm transition-colors"
                 >
-                  {isSubmitting ? 'Authenticating...' : mode === 'signup' ? 'Complete Operator Registration' : 'Authenticate Credentials'}
+                  {isSubmitting
+                    ? 'Authenticating...'
+                    : mode === 'signup'
+                    ? signupType === 'manager_create_team'
+                      ? 'Create Team & Register as Manager'
+                      : 'Complete Employee Registration'
+                    : 'Authenticate Credentials'}
                 </button>
               </div>
             </form>
@@ -228,10 +411,11 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
         {/* Footer Actions */}
         <div className="pt-4 border-t border-[#E5D5C0] flex items-center justify-between text-xs text-[#8B5E3C]">
           <button
-            onClick={handleGuestSignIn}
+            type="button"
+            onClick={() => onNavigate('Landing', 'push_back')}
             className="text-[#D4A373] hover:underline font-semibold"
           >
-            ← Continue as Guest Lead
+            ← Back to Overview
           </button>
 
           <span>Sahara Encrypted</span>
@@ -240,4 +424,3 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
     </div>
   );
 };
-

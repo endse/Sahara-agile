@@ -8,7 +8,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob } from '../types';
+import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
 import {
   DEMO_TASKS,
   DEMO_LOCATIONS,
@@ -150,6 +150,43 @@ export const subscribeAsyncJobs = (onData: (jobs: AsyncJob[]) => void) => {
 
 export const saveAsyncJob = async (job: AsyncJob) => {
   await setDoc(doc(db, 'async_jobs', job.id), job, { merge: true });
+};
+
+// --- TEAM INVITATIONS ---
+export const saveInvitation = async (invitation: TeamInvitation) => {
+  await setDoc(doc(db, 'invitations', invitation.id), invitation, { merge: true });
+};
+
+export const subscribeInvitations = (onData: (invites: TeamInvitation[]) => void) => {
+  const colRef = collection(db, 'invitations');
+  return onSnapshot(colRef, (snapshot) => {
+    const list: TeamInvitation[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as TeamInvitation);
+    });
+    onData(list);
+  });
+};
+
+export const findInvitationByEmail = async (email: string): Promise<TeamInvitation | null> => {
+  try {
+    const snap = await getDocs(collection(db, 'invitations'));
+    let found: TeamInvitation | null = null;
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() as TeamInvitation;
+      if (data.email.toLowerCase().trim() === email.toLowerCase().trim() && data.status === 'pending') {
+        found = { id: docSnap.id, ...data };
+      }
+    });
+    return found;
+  } catch (err) {
+    console.error('Error finding invitation by email:', err);
+    return null;
+  }
+};
+
+export const acceptInvitation = async (inviteId: string) => {
+  await updateDoc(doc(db, 'invitations', inviteId), { status: 'accepted' });
 };
 
 // ========================================================

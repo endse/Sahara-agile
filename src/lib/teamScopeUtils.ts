@@ -1,7 +1,7 @@
 import { Task, TeamMember, SiteLocation, UserStory, AttendanceLog, UserProfile } from '../types';
 
 export function getUserTeamSector(userProfile: UserProfile | null): string {
-  return userProfile?.teamSector || 'Hydro-Geology';
+  return userProfile?.teamName || userProfile?.teamSector || 'Sahara Primary Sector';
 }
 
 /**
@@ -20,12 +20,17 @@ export function scopeTasksByTeam(
   if (activeRole === 'Employee') {
     return tasks.filter((t) => {
       const matchTeam = t.teamSector === userTeam;
-      const matchAssignee = userName && t.assignee.name.toLowerCase().includes(userName);
-      return matchTeam || matchAssignee;
+      const matchAssignee = userName && t.assignee?.name?.toLowerCase().includes(userName);
+      return matchTeam || matchAssignee || !t.teamSector;
     });
   }
 
   // Manager Role
+  if (userProfile?.teamName && userProfile.teamName !== 'Sahara Primary Sector') {
+    // If Manager belongs to a custom registered team, isolate to that team or unassigned
+    return tasks.filter((t) => !t.teamSector || t.teamSector === userProfile.teamName || (managedSector !== 'All Teams' && t.teamSector === managedSector));
+  }
+
   if (!managedSector || managedSector === 'All Teams') {
     return tasks;
   }
@@ -46,6 +51,10 @@ export function scopeTeamBySector(
 
   if (activeRole === 'Employee') {
     return team.filter((m) => !m.teamSector || m.teamSector === userTeam);
+  }
+
+  if (userProfile?.teamName && userProfile.teamName !== 'Sahara Primary Sector') {
+    return team.filter((m) => !m.teamSector || m.teamSector === userProfile.teamName || (managedSector !== 'All Teams' && m.teamSector === managedSector));
   }
 
   if (!managedSector || managedSector === 'All Teams') {

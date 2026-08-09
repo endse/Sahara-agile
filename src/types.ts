@@ -1,4 +1,5 @@
 export type ScreenId =
+  | 'Landing'
   | 'Dashboard'
   | 'GlobalSearch'
   | 'ProjectTimeline'
@@ -42,6 +43,9 @@ export interface UserProfile {
   assignedStation?: string;
   bio?: string;
   updatedAt?: string;
+  permissionStatus?: 'pending_review' | 'approved' | 'rejected' | 'elevated';
+  teamName?: string;
+  isTeamManager?: boolean;
 }
 
 export type TransitionType = 'none' | 'push' | 'push_back' | 'slide_up' | 'slide_down';
@@ -74,6 +78,10 @@ export interface Task {
   timeSpent?: string;
   storyId?: string;
   projectId?: string;
+  approvalStatus?: 'approved' | 'pending_approval' | 'rejected';
+  pendingStatus?: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+  statusRequestedBy?: string;
+  statusRequestedAt?: string;
 }
 
 export interface UserStory {
@@ -131,8 +139,12 @@ export interface Activity {
   action: string;
   target: string;
   time: string;
-  type: 'comment' | 'status' | 'file' | 'assignment' | 'location';
+  type: 'comment' | 'status' | 'file' | 'assignment' | 'location' | 'approval_request';
   detail?: string;
+  taskId?: string;
+  requiresManagerApproval?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  pendingStatus?: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
 }
 
 export interface TeamMember {
@@ -165,6 +177,20 @@ export interface TimelineMilestone {
   progress: number;
   lead: string;
   region: string;
+}
+
+export interface TeamInvitation {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  isManagerInvite: boolean;
+  teamName: string;
+  invitedBy: string;
+  invitedByEmail: string;
+  createdAt: string;
+  status: 'pending' | 'accepted' | 'declined';
+  inviteCode: string;
 }
 
 export interface SiteLocation {

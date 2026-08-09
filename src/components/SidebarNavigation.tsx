@@ -239,7 +239,10 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
 
           {user ? (
             <button
-              onClick={signOutUser}
+              onClick={async () => {
+                await signOutUser();
+                onNavigate('Landing', 'push_back');
+              }}
               className="text-[#8B5E3C] hover:text-[#BC4749] p-1.5 transition-colors shrink-0"
               title="Sign Out"
             >

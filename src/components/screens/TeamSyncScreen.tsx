@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ScreenId, TeamMember } from '../../types';
+import { ScreenId, TeamMember, TeamInvitation } from '../../types';
+import { saveInvitation } from '../../services/firestoreService';
 
 interface TeamSyncProps {
   team: TeamMember[];
@@ -23,12 +24,19 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [createdInviteInfo, setCreatedInviteInfo] = useState<{
+    name: string;
+    email: string;
+    role: string;
+    link: string;
+    isManager: boolean;
+  } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Add Member Form state
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('Field Operations Specialist');
+  const [newMemberRole, setNewMemberRole] = useState('Field Technician');
   const [newMemberSector, setNewMemberSector] = useState('Hydro-Geology');
   const [newMemberLocation, setNewMemberLocation] = useState('Al-Kufra Site A');
   const [newMemberInitialStatus, setNewMemberInitialStatus] = useState<'active' | 'in_field' | 'busy' | 'offline'>('active');
@@ -58,6 +66,11 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       return;
     }
 
+    const isManagerRole =
+      newMemberRole.toLowerCase().includes('manager') ||
+      newMemberRole.toLowerCase().includes('director') ||
+      newMemberRole.toLowerCase().includes('lead');
+
     const created: TeamMember = {
       id: `TM-${Date.now()}`,
       name: newMemberName.trim(),
@@ -81,11 +94,40 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       await onAddTeamMember(created);
     }
 
+    // Save invitation doc in Firestore
+    const inviteId = `INV-${Date.now()}`;
+    const inviteCode = Math.random().toString(36).substring(2, 9).toUpperCase();
+    const invitation: TeamInvitation = {
+      id: inviteId,
+      email: newMemberEmail.trim(),
+      fullName: newMemberName.trim(),
+      role: newMemberRole,
+      isManagerInvite: isManagerRole,
+      teamName: newMemberSector || 'Sahara Primary Sector',
+      invitedBy: 'Operations Manager',
+      invitedByEmail: 'manager@sahara-agile.org',
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      inviteCode,
+    };
+
+    await saveInvitation(invitation);
+
+    const inviteLink = `${window.location.origin}/?inviteEmail=${encodeURIComponent(newMemberEmail.trim())}`;
+
     setIsAddModalOpen(false);
     setSelectedMember(created);
+    setCreatedInviteInfo({
+      name: newMemberName.trim(),
+      email: newMemberEmail.trim(),
+      role: newMemberRole,
+      link: inviteLink,
+      isManager: isManagerRole,
+    });
+
     setNewMemberName('');
     setNewMemberEmail('');
-    showToast(`✅ Added ${created.name} to field roster & synced to Firestore!`);
+    showToast(`✉️ Invitation sent to ${newMemberEmail.trim()}! Registered in Firestore.`);
   };
 
   const handleAcceptPermissionReview = async (member: TeamMember, newRole?: string) => {
@@ -672,6 +714,79 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: INVITATION LINK & EMAIL DISPATCH CREATED */}
+      {createdInviteInfo && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-[#FAF5EE] border border-[#e0d8cc] rounded-3xl max-w-lg w-full p-6 lg:p-8 shadow-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-[#606C38] text-white flex items-center justify-center mx-auto shadow-md">
+                <span className="material-symbols-outlined text-3xl">mark_email_read</span>
+              </div>
+              <h3 className="font-headline text-2xl font-bold text-[#3a302a]">
+                Invitation Sent & Registered!
+              </h3>
+              <p className="text-xs text-[#78706a]">
+                An invitation record has been logged in Firestore for{' '}
+                <span className="font-bold text-[#3a302a]">{createdInviteInfo.name}</span>.
+              </p>
+            </div>
+
+            <div className="p-4 bg-[#FEFAE0] border border-[#E9EDC9] rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#606C38] font-bold uppercase tracking-wider">Recipient Email:</span>
+                <span className="font-mono text-[#3a302a] font-semibold">{createdInviteInfo.email}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#606C38] font-bold uppercase tracking-wider">Assigned Role:</span>
+                <span className="font-bold text-[#606C38]">{createdInviteInfo.role}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#606C38] font-bold uppercase tracking-wider">Access Rights:</span>
+                <span className="font-bold text-[#3a302a]">
+                  {createdInviteInfo.isManager ? '👑 Manager Privileges' : '👷 Employee Roster'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#3a302a] uppercase flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm text-[#D4A373]">link</span>
+                <span>Shareable Registration URL</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={createdInviteInfo.link}
+                  className="flex-1 bg-[#f2ece4] border border-[#d8d0c8] rounded-xl px-3 py-2 text-xs font-mono text-[#3a302a] select-all outline-none"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdInviteInfo.link);
+                    showToast('📋 Invitation link copied to clipboard!');
+                  }}
+                  className="px-3.5 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white rounded-xl text-xs font-bold shrink-0 flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">content_copy</span>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-[#78706a]">
+                When {createdInviteInfo.name} signs up using {createdInviteInfo.email} (or via Google with this email),
+                they will be automatically assigned to your team with {createdInviteInfo.role} privileges.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setCreatedInviteInfo(null)}
+              className="w-full py-3 bg-[#3a302a] hover:bg-[#26201b] text-white rounded-xl text-xs font-bold shadow-md"
+            >
+              Close & Return to Team Roster
+            </button>
           </div>
         </div>
       )}

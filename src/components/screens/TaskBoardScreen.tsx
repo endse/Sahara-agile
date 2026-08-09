@@ -7,13 +7,19 @@ interface TaskBoardProps {
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   onSelectTask: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: Task['status']) => void;
+  onApproveTaskStatus?: (taskId: string) => void;
+  onRejectTaskStatus?: (taskId: string) => void;
+  activeRole?: 'Manager' | 'Employee';
 }
 
 export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
   tasks,
   onNavigate,
   onSelectTask,
-  onUpdateTaskStatus
+  onUpdateTaskStatus,
+  onApproveTaskStatus,
+  onRejectTaskStatus,
+  activeRole = 'Manager',
 }) => {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -92,7 +98,9 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
               Task Board - Sahara
             </h1>
             <p className="text-sm text-[#8B5E3C]">
-              Drag cards between columns to seamlessly update task progress across field operations.
+              {activeRole === 'Manager'
+                ? 'Review team mission progress and approve/reject employee task status change requests.'
+                : 'Drag cards between columns or select status. Status changes will be sent to Manager for approval.'}
             </p>
           </div>
 
@@ -116,6 +124,34 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Manager Pending Status Approvals Banner */}
+        {tasks.some((t) => t.approvalStatus === 'pending_approval') && (
+          <div className="p-4 bg-[#FEFAE0] border border-[#E9EDC9] rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 text-[#606C38]">
+              <span className="material-symbols-outlined text-xl">rate_review</span>
+              <div>
+                <span className="font-bold block">
+                  Task Status Approvals Pending ({tasks.filter((t) => t.approvalStatus === 'pending_approval').length})
+                </span>
+                <span className="text-[11px] opacity-90">
+                  {activeRole === 'Manager'
+                    ? 'Field employees submitted status updates requiring your review and verification.'
+                    : 'Your status change request has been logged and is awaiting Manager review.'}
+                </span>
+              </div>
+            </div>
+
+            {activeRole === 'Manager' && (
+              <button
+                onClick={() => onNavigate('TaskBoardActivity', 'push')}
+                className="px-3.5 py-1.5 bg-[#606C38] hover:bg-[#4d572d] text-white font-bold rounded-xl text-[11px] shrink-0"
+              >
+                Review All Pending Approvals →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Filters and Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-[#E5D5C0]">
@@ -251,6 +287,52 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
                       <h4 className="font-semibold text-xs text-[#3D3028] group-hover:text-[#D4A373] transition-colors leading-snug">
                         {task.title}
                       </h4>
+
+                      {/* Pending Approval Badge */}
+                      {task.approvalStatus === 'pending_approval' && (
+                        <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5 text-[10px]">
+                          <div className="flex items-center justify-between text-amber-900 font-bold">
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs text-amber-600">hourglass_top</span>
+                              <span>Pending Review</span>
+                            </span>
+                            <span className="uppercase text-[9px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-mono">
+                              ➔ {task.pendingStatus?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <p className="text-[#8B5E3C] text-[9.5px]">
+                            Requested by {task.statusRequestedBy || 'Employee'}
+                          </p>
+
+                          {/* Manager Quick Action Buttons */}
+                          {activeRole === 'Manager' && (onApproveTaskStatus || onRejectTaskStatus) && (
+                            <div className="flex items-center gap-1.5 pt-1">
+                              {onApproveTaskStatus && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApproveTaskStatus(task.id);
+                                  }}
+                                  className="flex-1 bg-[#606C38] hover:bg-[#4d572d] text-white font-bold py-1 px-2 rounded-lg text-[9px] shadow-2xs"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {onRejectTaskStatus && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRejectTaskStatus(task.id);
+                                  }}
+                                  className="bg-[#BC4749]/15 hover:bg-[#BC4749]/25 text-[#BC4749] font-bold py-1 px-2 rounded-lg text-[9px]"
+                                >
+                                  Reject
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Progress indicator */}
                       <div className="space-y-1">
