@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenId, TransitionType, TeamMember } from '../../types';
 
 interface NewProjectScreenProps {
@@ -20,6 +20,13 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
   onAddProject,
   onNavigate,
 }) => {
+  // Reset scroll to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.scrollTop = 0;
+  }, []);
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('2026-09-01');

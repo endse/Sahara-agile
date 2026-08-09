@@ -288,7 +288,7 @@ export const UserStoriesScreen: React.FC<UserStoriesScreenProps> = ({
       {/* Modal for creating a new User Story */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FDF8F3] border border-[#E5D5C0] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
+          <div className="bg-[#FDF8F3] border border-[#E5D5C0] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-[#E5D5C0] pb-3">
               <h3 className="text-lg font-bold text-[#3D3028] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#8B5E3C]">auto_stories</span>

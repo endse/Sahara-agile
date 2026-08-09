@@ -56,7 +56,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       </div>
 
       {/* Action Bar */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2.5 max-w-full">
         {/* Deadline Alerts Notification Bell Dropdown */}
         <div className="relative">
           <button

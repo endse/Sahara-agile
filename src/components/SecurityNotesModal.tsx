@@ -46,43 +46,25 @@ export const SecurityNotesModal: React.FC<SecurityNotesModalProps> = ({
           </button>
         </div>
 
-        {/* Live Role Switcher for Evaluation */}
+        {/* Authenticated Role Status (Read-Only Security) */}
         <div className="bg-[#2D241E] p-4 rounded-xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm">swap_horiz</span>
-              <span>Test Role-Based Access Control (RBAC):</span>
+              <span className="material-symbols-outlined text-sm">verified_user</span>
+              <span>Authenticated Role Credentials:</span>
             </p>
             <p className="text-[11px] text-stone-300 mt-0.5">
-              Switch roles instantly to evaluate permission differences between Manager and Employee views.
+              Role permissions are strictly tied to authenticated credentials. Role switching is restricted to the <code className="text-amber-400">/demo</code> sandbox page.
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => onSwitchRole('Manager')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                currentRole === 'Manager'
-                  ? 'bg-amber-500 text-[#1A1411] shadow-xs'
-                  : 'bg-white/10 text-stone-300 hover:bg-white/20'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">shield_person</span>
-              <span>Manager Role</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onSwitchRole('Employee')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                currentRole === 'Employee'
-                  ? 'bg-amber-500 text-[#1A1411] shadow-xs'
-                  : 'bg-white/10 text-stone-300 hover:bg-white/20'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">badge</span>
-              <span>Employee Role</span>
-            </button>
+            <span className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-[#1A1411] shadow-xs flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">
+                {currentRole === 'Manager' ? 'admin_panel_settings' : 'badge'}
+              </span>
+              <span>Authenticated Role: {currentRole}</span>
+            </span>
           </div>
         </div>
 

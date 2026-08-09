@@ -32,7 +32,7 @@ export const ProjectMapScreen: React.FC<ProjectMapProps> = ({ locations, tasks, 
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="bg-[#FDF8F3] border border-[#E5D5C0] p-1 rounded-full flex items-center gap-1">
             {(['topographic', 'satellite', 'thermal'] as const).map((mode) => (
               <button

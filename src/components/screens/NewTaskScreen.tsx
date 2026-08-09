@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenId, Task, TeamMember, SiteLocation } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,6 +16,13 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
   onNavigate
 }) => {
   const { userProfile } = useAuth();
+
+  // Reset scroll to top on mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.scrollTop = 0;
+  }, []);
 
   // Combine team with current user profile if logged in
   const currentUserMember: TeamMember | null = userProfile

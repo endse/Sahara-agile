@@ -151,8 +151,8 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
         </div>
       </div>
 
-      {/* Board Columns Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-6">
+      {/* Board Columns Container with Smooth Horizontal Scroll */}
+      <div className="flex overflow-x-auto gap-4 items-start pb-6 min-w-full custom-scrollbar">
         {columns.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id);
           const isColumnHovered = dragOverColumnId === col.id;
@@ -163,7 +163,7 @@ export const TaskBoardScreen: React.FC<TaskBoardProps> = ({
               onDragOver={(e) => handleDragOver(e, col.id)}
               onDragLeave={(e) => handleDragLeave(e, col.id)}
               onDrop={(e) => handleDrop(e, col.id)}
-              className={`bg-white border rounded-[24px] p-4 space-y-3 min-w-[240px] transition-all duration-200 ${
+              className={`bg-white border rounded-[24px] p-4 space-y-3 flex-1 min-w-[260px] max-w-[340px] transition-all duration-200 ${
                 isColumnHovered
                   ? 'border-2 border-dashed border-[#606C38] bg-[#FDF8F3] shadow-md ring-4 ring-[#606C38]/10 scale-[1.01]'
                   : 'border-[#F3E9DC] hover:border-[#E5D5C0]'
