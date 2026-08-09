@@ -414,6 +414,10 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
             selectedEmployee={effectiveEmployee}
             monthName={monthName}
             year={selectedYear}
+            isManager={isManager}
+            onSelectEmployee={setSelectedEmployee}
+            attendanceLogs={attendanceLogs}
+            team={team}
           />
         )}
 

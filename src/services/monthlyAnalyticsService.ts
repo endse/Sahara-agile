@@ -90,6 +90,20 @@ const DEFAULT_EMPLOYEES = [
   { name: 'Maya Lin', role: 'SatCom Lead', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80' }
 ];
 
+export interface AllEmployeesDayCheckInOutData {
+  day: number;
+  date: string;
+  dayName: string;
+  isWeekend: boolean;
+  employeeShifts: DailyCheckInOutData[];
+  earliestClockIn: number;
+  latestClockOut: number;
+  totalTeamHours: number;
+  totalTeamOvertime: number;
+  onTimeCount: number;
+  lateCount: number;
+}
+
 export function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
@@ -256,6 +270,53 @@ export function getMonthlyCheckInOutData(
         });
       }
     }
+  }
+
+  return result;
+}
+
+/**
+ * Calculates 31 days of Check-In & Check-Out records aggregated for ALL 5 team members.
+ */
+export function getAllEmployeesMonthlyCheckInOutData(
+  year: number,
+  month: number,
+  attendanceLogs: AttendanceLog[] = [],
+  team: TeamMember[] = []
+): AllEmployeesDayCheckInOutData[] {
+  const daysCount = getDaysInMonth(year, month);
+  const empList = team.length > 0 ? team : DEFAULT_EMPLOYEES;
+  const result: AllEmployeesDayCheckInOutData[] = [];
+
+  const employeeLogMaps = empList.map((emp) =>
+    getMonthlyCheckInOutData(year, month, emp.name, attendanceLogs, team)
+  );
+
+  for (let day = 1; day <= daysCount; day++) {
+    const shiftsForDay: DailyCheckInOutData[] = employeeLogMaps.map((logs) => logs[day - 1]);
+    const firstShift = shiftsForDay[0];
+
+    const activeShifts = shiftsForDay.filter((s) => s.totalHours > 0);
+    const earliestClockIn = activeShifts.length > 0 ? Math.min(...activeShifts.map((s) => s.clockInHourDecimal)) : 0;
+    const latestClockOut = activeShifts.length > 0 ? Math.max(...activeShifts.map((s) => s.clockOutHourDecimal)) : 0;
+    const totalTeamHours = Number(shiftsForDay.reduce((a, b) => a + b.totalHours, 0).toFixed(1));
+    const totalTeamOvertime = Number(shiftsForDay.reduce((a, b) => a + b.overtimeHours, 0).toFixed(1));
+    const onTimeCount = shiftsForDay.filter((s) => s.status === 'on_time').length;
+    const lateCount = shiftsForDay.filter((s) => s.status === 'late').length;
+
+    result.push({
+      day,
+      date: firstShift.date,
+      dayName: firstShift.dayName,
+      isWeekend: firstShift.isWeekend,
+      employeeShifts: shiftsForDay,
+      earliestClockIn,
+      latestClockOut,
+      totalTeamHours,
+      totalTeamOvertime,
+      onTimeCount,
+      lateCount,
+    });
   }
 
   return result;

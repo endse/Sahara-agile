@@ -3,6 +3,7 @@ import {
   getDaysInMonth,
   formatDecimalToTime,
   getMonthlyCheckInOutData,
+  getAllEmployeesMonthlyCheckInOutData,
   getMonthlyPerformanceData,
   getMonthlyHeatmapMatrix,
   getMonthlyTaskBurndown,
@@ -93,5 +94,13 @@ describe('monthlyAnalyticsService Unit Tests', () => {
     expect(isolated).toHaveLength(1);
     expect(isolated[0].employeeName).toBe('Amara Vance');
     expect(isolated[0].days).toHaveLength(31);
+  });
+
+  it('should generate 31 days of combined check-in & check-out records for all 5 team members', () => {
+    const teamData = getAllEmployeesMonthlyCheckInOutData(2026, 8, INITIAL_ATTENDANCE, INITIAL_TEAM);
+    expect(teamData).toHaveLength(31);
+    expect(teamData[0].employeeShifts).toHaveLength(5);
+    const monthTotal = teamData.reduce((a, b) => a + b.totalTeamHours, 0);
+    expect(monthTotal).toBeGreaterThan(100);
   });
 });

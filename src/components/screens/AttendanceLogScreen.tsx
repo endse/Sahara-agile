@@ -976,6 +976,10 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
               selectedEmployee={selectedEmployee}
               monthName="August"
               year={2026}
+              isManager={activeRole === 'Manager'}
+              onSelectEmployee={setSelectedEmployee}
+              attendanceLogs={attendanceLogs}
+              team={team}
             />
           </div>
         )}
