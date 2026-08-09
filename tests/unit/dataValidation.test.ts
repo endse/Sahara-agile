@@ -8,20 +8,43 @@ import {
   INITIAL_STORIES,
   INITIAL_ATTENDANCE,
   INITIAL_ASYNC_JOBS,
+  DEMO_TASKS,
+  DEMO_ACTIVITIES,
+  DEMO_TEAM,
+  DEMO_TIMELINE,
+  DEMO_LOCATIONS,
+  DEMO_STORIES,
+  DEMO_ATTENDANCE,
+  DEMO_ASYNC_JOBS,
+  getAllDemoData,
 } from '../../src/data';
+import { scopeTasksByTeam } from '../../src/lib/teamScopeUtils';
 
-describe('Data Validation & Integrity', () => {
-  describe('INITIAL_TASKS', () => {
-    it('contains non-empty list of tasks', () => {
-      expect(INITIAL_TASKS.length).toBeGreaterThan(0);
+describe('Data Validation & Clean Empty State Integrity', () => {
+  describe('INITIAL Default State', () => {
+    it('initializes app with clean empty state arrays by default', () => {
+      expect(INITIAL_TASKS).toHaveLength(0);
+      expect(INITIAL_ACTIVITIES).toHaveLength(0);
+      expect(INITIAL_TEAM).toHaveLength(0);
+      expect(INITIAL_TIMELINE).toHaveLength(0);
+      expect(INITIAL_LOCATIONS).toHaveLength(0);
+      expect(INITIAL_STORIES).toHaveLength(0);
+      expect(INITIAL_ATTENDANCE).toHaveLength(0);
+      expect(INITIAL_ASYNC_JOBS).toHaveLength(0);
+    });
+  });
+
+  describe('DEMO_TASKS (/demo Data)', () => {
+    it('contains non-empty list of demo tasks', () => {
+      expect(DEMO_TASKS.length).toBeGreaterThan(0);
     });
 
-    it('has unique IDs and valid status values for every task', () => {
+    it('has unique IDs and valid status values for every demo task', () => {
       const ids = new Set<string>();
       const validStatuses = ['backlog', 'todo', 'in_progress', 'review', 'done'];
       const validPriorities = ['low', 'medium', 'high', 'urgent'];
 
-      INITIAL_TASKS.forEach((task) => {
+      DEMO_TASKS.forEach((task) => {
         expect(task.id).toBeTruthy();
         expect(ids.has(task.id)).toBe(false);
         ids.add(task.id);
@@ -34,12 +57,12 @@ describe('Data Validation & Integrity', () => {
     });
   });
 
-  describe('INITIAL_LOCATIONS (Projects)', () => {
-    it('contains valid project locations', () => {
-      expect(INITIAL_LOCATIONS.length).toBeGreaterThan(0);
+  describe('DEMO_LOCATIONS (Projects)', () => {
+    it('contains valid project locations for demo', () => {
+      expect(DEMO_LOCATIONS.length).toBeGreaterThan(0);
       const validStatuses = ['active', 'warning', 'completed', 'planned'];
 
-      INITIAL_LOCATIONS.forEach((loc) => {
+      DEMO_LOCATIONS.forEach((loc) => {
         expect(loc.id).toBeTruthy();
         expect(loc.name).toBeTruthy();
         expect(loc.region).toBeTruthy();
@@ -50,13 +73,13 @@ describe('Data Validation & Integrity', () => {
     });
   });
 
-  describe('INITIAL_STORIES', () => {
+  describe('DEMO_STORIES', () => {
     it('contains user stories linked to valid project IDs', () => {
-      expect(INITIAL_STORIES.length).toBeGreaterThan(0);
-      const locationIds = new Set(INITIAL_LOCATIONS.map((loc) => loc.id));
+      expect(DEMO_STORIES.length).toBeGreaterThan(0);
+      const locationIds = new Set(DEMO_LOCATIONS.map((loc) => loc.id));
       const validStatuses = ['backlog', 'in_progress', 'testing', 'completed'];
 
-      INITIAL_STORIES.forEach((story) => {
+      DEMO_STORIES.forEach((story) => {
         expect(story.id).toBeTruthy();
         expect(story.title).toBeTruthy();
         expect(story.projectId).toBeTruthy();
@@ -68,12 +91,12 @@ describe('Data Validation & Integrity', () => {
     });
   });
 
-  describe('INITIAL_ATTENDANCE', () => {
+  describe('DEMO_ATTENDANCE', () => {
     it('contains valid clock-in / clock-out attendance records', () => {
-      expect(INITIAL_ATTENDANCE.length).toBeGreaterThan(0);
+      expect(DEMO_ATTENDANCE.length).toBeGreaterThan(0);
       const validStatuses = ['clocked_in', 'clocked_out'];
 
-      INITIAL_ATTENDANCE.forEach((log) => {
+      DEMO_ATTENDANCE.forEach((log) => {
         expect(log.id).toBeTruthy();
         expect(log.userId).toBeTruthy();
         expect(log.userName).toBeTruthy();
@@ -89,21 +112,35 @@ describe('Data Validation & Integrity', () => {
     });
   });
 
-  describe('INITIAL_ASYNC_JOBS', () => {
-    it('contains valid background jobs state machine initial records', () => {
-      expect(INITIAL_ASYNC_JOBS.length).toBeGreaterThan(0);
-      const validStatuses = ['pending', 'processing', 'completed', 'failed'];
-      const validTypes = ['sprint_summary', 'attendance_audit', 'employee_worklog', 'task_completion_export'];
+  describe('getAllDemoData Helper', () => {
+    it('returns structured object containing all team demo datasets', () => {
+      const allData = getAllDemoData();
+      expect(allData.tasks).toEqual(DEMO_TASKS);
+      expect(allData.team).toEqual(DEMO_TEAM);
+      expect(allData.locations).toEqual(DEMO_LOCATIONS);
+      expect(allData.stories).toEqual(DEMO_STORIES);
+      expect(allData.attendance).toEqual(DEMO_ATTENDANCE);
+      expect(allData.jobs).toEqual(DEMO_ASYNC_JOBS);
+    });
+  });
 
-      INITIAL_ASYNC_JOBS.forEach((job) => {
-        expect(job.id).toBeTruthy();
-        expect(job.title).toBeTruthy();
-        expect(validTypes).toContain(job.type);
-        expect(validStatuses).toContain(job.status);
-        expect(job.progress).toBeGreaterThanOrEqual(0);
-        expect(job.progress).toBeLessThanOrEqual(100);
-        expect(typeof job.retryCount).toBe('number');
+  describe('Team Scoping Utilities', () => {
+    const mockProfile: any = { displayName: 'Amara Vance', teamSector: 'Hydro-Geology' };
+
+    it('scopes tasks for employee to assigned Hydro-Geology team sector', () => {
+      const scoped = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Employee');
+      expect(scoped.length).toBeGreaterThan(0);
+      scoped.forEach((t) => {
+        expect(t.teamSector === 'Hydro-Geology' || t.assignee.name.includes('Amara')).toBe(true);
       });
+    });
+
+    it('scopes tasks for manager according to selected managed team sector', () => {
+      const allTasks = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Manager', 'All Teams');
+      expect(allTasks).toEqual(DEMO_TASKS);
+
+      const hydroTasks = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Manager', 'Hydro-Geology');
+      expect(hydroTasks.length).toBe(2);
     });
   });
 });

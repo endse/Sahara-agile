@@ -118,6 +118,38 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         </div>
       </div>
 
+      {/* Clean Production Empty State Banner */}
+      {tasks.length === 0 && (
+        <div className="bg-[#FDF8F3] border border-[#E5D5C0] rounded-3xl p-6 text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 bg-amber-500/10 text-amber-800 rounded-full flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-2xl">assignment_add</span>
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-base font-bold text-[#3D3028]">Production Workspace Ready</h3>
+            <p className="text-xs text-[#8B5E3C]">
+              No active tasks found in your assigned team scope. Dispatch a new task to get started, or visit <strong className="text-[#3D3028]">/demo</strong> for feature demonstrations.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-1">
+            <button
+              onClick={() => onNavigate('NewTask', 'slide_up')}
+              className="px-4 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>Dispatch Mission Task</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('Demo', 'none')}
+              className="px-4 py-2 bg-[#F3E9DC] hover:bg-[#E5D5C0] text-[#5C4D42] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm text-[#8B5E3C]">dataset</span>
+              <span>Demo Hub (/demo)</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Deadline Alert Summary Panel */}
       <DeadlineAlertSummary
         tasks={tasks}

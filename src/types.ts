@@ -14,7 +14,21 @@ export type ScreenId =
   | 'TaskBoardActivity'
   | 'Profile'
   | 'SignUp'
-  | 'PerformanceAnalytics';
+  | 'PerformanceAnalytics'
+  | 'Demo';
+
+export type WalkthroughRole = 'Manager' | 'Employee';
+
+export interface WalkthroughStep {
+  title: string;
+  subtitle: string;
+  description: string;
+  bullets: string[];
+  targetScreen?: ScreenId;
+  actionLabel?: string;
+  icon: string;
+}
+
 
 export interface UserProfile {
   uid: string;
@@ -22,6 +36,7 @@ export interface UserProfile {
   displayName: string;
   photoURL: string;
   role: string;
+  teamSector?: string;
   specialty?: string;
   phone?: string;
   assignedStation?: string;
@@ -53,6 +68,7 @@ export interface Task {
   tags: string[];
   description?: string;
   region?: string;
+  teamSector?: string;
   location?: { lat: number; lng: number; label: string };
   updatedAt: string;
   timeSpent?: string;
@@ -72,6 +88,7 @@ export interface UserStory {
   assigneeName?: string;
   createdAt: string;
   updatedAt: string;
+  teamSector?: string;
 }
 
 export interface AttendanceLog {
@@ -91,6 +108,7 @@ export interface AttendanceLog {
   approvalStatus?: 'pending' | 'approved' | 'flagged';
   approvedBy?: string;
   managerNotes?: string;
+  teamSector?: string;
 }
 
 export interface AsyncJob {
@@ -129,6 +147,7 @@ export interface TeamMember {
   localTime?: string;
   tasksCount: number;
   performance: number;
+  teamSector?: string;
 }
 
 export interface TimelineMilestone {

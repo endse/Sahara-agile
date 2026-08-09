@@ -9,9 +9,12 @@ interface TopHeaderProps {
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
   onOpenMobileMenu?: () => void;
   onOpenSecurityModal?: () => void;
+  onOpenWalkthrough?: () => void;
   tasks?: Task[];
   onSelectTask?: (task: Task) => void;
   rightActions?: React.ReactNode;
+  managedSector?: string;
+  onSelectManagedSector?: (sector: string) => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -20,9 +23,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onNavigate,
   onOpenMobileMenu,
   onOpenSecurityModal,
+  onOpenWalkthrough,
   tasks = [],
   onSelectTask,
-  rightActions
+  rightActions,
+  managedSector = 'All Teams',
+  onSelectManagedSector
 }) => {
   const { user, userProfile, activeRole, switchActiveRole, signOutUser } = useAuth();
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -139,6 +145,28 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </div>
 
+        {/* Interactive Walkthrough Tour Trigger */}
+        {onOpenWalkthrough && (
+          <button
+            onClick={onOpenWalkthrough}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#8B5E3C] hover:bg-[#6f492e] text-white text-xs font-bold transition-all shadow-2xs"
+            title="Launch Interactive Guided Walkthrough"
+          >
+            <span className="material-symbols-outlined text-base text-amber-300">route</span>
+            <span className="hidden sm:inline">Guided Tour</span>
+          </button>
+        )}
+
+        {/* /demo Hub Button */}
+        <button
+          onClick={() => onNavigate('Demo', 'none')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-900 hover:bg-stone-800 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-2xs"
+          title="Open Demo Data & Team Showcase Hub (/demo)"
+        >
+          <span className="material-symbols-outlined text-base">dataset</span>
+          <span>/demo</span>
+        </button>
+
         {/* Security Policy & RBAC Notes Modal Trigger */}
         <button
           onClick={onOpenSecurityModal}
@@ -148,6 +176,31 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span className="material-symbols-outlined text-base text-amber-600">verified_user</span>
           <span className="hidden md:inline">Security & RBAC Policy</span>
         </button>
+
+        {/* Production Team Scope Selector */}
+        {activeRole === 'Manager' ? (
+          <div className="hidden sm:flex items-center gap-1 bg-[#F3E9DC] border border-[#E5D5C0] px-2.5 py-1 rounded-full text-xs font-bold text-[#3D3028]">
+            <span className="material-symbols-outlined text-sm text-[#8B5E3C]">groups</span>
+            <span className="text-[11px] text-[#8B5E3C]">Managing:</span>
+            <select
+              value={managedSector}
+              onChange={(e) => onSelectManagedSector && onSelectManagedSector(e.target.value)}
+              className="bg-transparent font-bold text-xs text-[#3D3028] focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="All Teams">All Sector Teams</option>
+              <option value="Hydro-Geology">Hydro-Geology</option>
+              <option value="Grid Architecture">Grid Architecture</option>
+              <option value="Field Robotics">Field Robotics</option>
+              <option value="Ecology & Environment">Ecology & Environment</option>
+              <option value="SatCom Telecom">SatCom Telecom</option>
+            </select>
+          </div>
+        ) : (
+          <div className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold text-amber-900">
+            <span className="material-symbols-outlined text-sm text-amber-700">badge</span>
+            <span>Team: {userProfile?.teamSector || 'Hydro-Geology'}</span>
+          </div>
+        )}
 
         {/* RBAC Active Role Badge & Quick Switcher */}
         <button

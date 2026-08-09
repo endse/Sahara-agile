@@ -10,6 +10,14 @@ import {
   INITIAL_STORIES,
   INITIAL_ATTENDANCE,
   INITIAL_ASYNC_JOBS,
+  DEMO_TASKS,
+  DEMO_ACTIVITIES,
+  DEMO_TEAM,
+  DEMO_TIMELINE,
+  DEMO_LOCATIONS,
+  DEMO_STORIES,
+  DEMO_ATTENDANCE,
+  DEMO_ASYNC_JOBS,
 } from './data';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -26,6 +34,8 @@ import {
   subscribeStories,
   subscribeAttendance,
   subscribeAsyncJobs,
+  seedDemoDataToFirestore,
+  clearFirestoreData,
 } from './services/firestoreService';
 import { SidebarNavigation } from './components/SidebarNavigation';
 import { TopHeader } from './components/TopHeader';
@@ -46,8 +56,17 @@ import { AttendanceLogScreen } from './components/screens/AttendanceLogScreen';
 import { AsyncReportsScreen } from './components/screens/AsyncReportsScreen';
 import { ProfileScreen } from './components/screens/ProfileScreen';
 import { PerformanceAnalyticsScreen } from './components/screens/PerformanceAnalyticsScreen';
+import { DemoDataScreen } from './components/screens/DemoDataScreen';
+import { InteractiveWalkthrough } from './components/InteractiveWalkthrough';
 import { SecurityNotesModal } from './components/SecurityNotesModal';
 import { RbacGuard } from './components/RbacGuard';
+import {
+  scopeTasksByTeam,
+  scopeTeamBySector,
+  scopeLocationsByTeam,
+  scopeStoriesByTeam,
+  scopeAttendanceByTeam,
+} from './lib/teamScopeUtils';
 
 function AppContent() {
   const { userProfile, activeRole, switchActiveRole } = useAuth();
@@ -55,6 +74,34 @@ function AppContent() {
   const [transition, setTransition] = useState<TransitionType>('none');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+
+  // Walkthrough Modal State
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+  const [walkthroughRole, setWalkthroughRole] = useState<'Manager' | 'Employee'>(activeRole);
+
+  // Keep walkthrough role synced with activeRole
+  useEffect(() => {
+    setWalkthroughRole(activeRole);
+  }, [activeRole]);
+
+  // Handle URL Path & Hash Navigation for /demo
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      if (path === '/demo' || hash === '#demo' || hash === '#/demo') {
+        setCurrentScreen('Demo');
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
 
   // Application State backed by Firestore
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
@@ -65,7 +112,35 @@ function AppContent() {
   const [stories, setStories] = useState<import('./types').UserStory[]>(INITIAL_STORIES);
   const [attendanceLogs, setAttendanceLogs] = useState<import('./types').AttendanceLog[]>(INITIAL_ATTENDANCE);
   const [asyncJobs, setAsyncJobs] = useState<import('./types').AsyncJob[]>(INITIAL_ASYNC_JOBS);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(INITIAL_TASKS[0]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null);
+
+  // Seed Demo Data into State & Firestore
+  const handleSeedDemoData = async () => {
+    setTasks(DEMO_TASKS);
+    setActivities(DEMO_ACTIVITIES);
+    setTeam(DEMO_TEAM);
+    setTimeline(DEMO_TIMELINE);
+    setLocations(DEMO_LOCATIONS);
+    setStories(DEMO_STORIES);
+    setAttendanceLogs(DEMO_ATTENDANCE);
+    setAsyncJobs(DEMO_ASYNC_JOBS);
+    setSelectedTask(DEMO_TASKS[0]);
+    await seedDemoDataToFirestore();
+  };
+
+  // Clear All Data (Reset to Empty State)
+  const handleClearAllData = async () => {
+    setTasks([]);
+    setActivities([]);
+    setTeam([]);
+    setTimeline([]);
+    setLocations([]);
+    setStories([]);
+    setAttendanceLogs([]);
+    setAsyncJobs([]);
+    setSelectedTask(null);
+    await clearFirestoreData();
+  };
 
   // Real-time Firestore Subscriptions
   useEffect(() => {
@@ -90,6 +165,16 @@ function AppContent() {
     };
   }, []);
 
+  // Production Manager Scope State
+  const [managedSector, setManagedSector] = useState<string>('All Teams');
+
+  // Scope Data for Production Application Views
+  const scopedTasks = scopeTasksByTeam(tasks, userProfile, activeRole, managedSector);
+  const scopedTeam = scopeTeamBySector(team, userProfile, activeRole, managedSector);
+  const scopedLocations = scopeLocationsByTeam(locations, userProfile, activeRole, managedSector);
+  const scopedStories = scopeStoriesByTeam(stories, userProfile, activeRole, managedSector);
+  const scopedAttendance = scopeAttendanceByTeam(attendanceLogs, userProfile, activeRole, managedSector);
+
   // Sync selected task when tasks change
   useEffect(() => {
     if (tasks.length > 0 && !selectedTask) {
@@ -100,11 +185,32 @@ function AppContent() {
     }
   }, [tasks]);
 
-  // Navigation handler
+  // Navigation handler with top-scroll reset
   const handleNavigate = (targetScreen: ScreenId, transType: TransitionType = 'none') => {
     setTransition(transType);
     setCurrentScreen(targetScreen);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+    }
   };
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut handler for GlobalSearch
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (currentScreen === 'GlobalSearch') {
+          handleNavigate('Dashboard', 'slide_down');
+        } else {
+          handleNavigate('GlobalSearch', 'slide_down');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [currentScreen]);
 
   const handleAddTask = async (newTask: Task) => {
     setTasks(prev => [newTask, ...prev]);
@@ -269,7 +375,8 @@ function AppContent() {
     TaskBoardActivity: 'Task inspector with live telemetry activity feed',
     Profile: 'Dynamic operator profile, credentials, and field station assignment',
     SignUp: 'Field operator credential authentication',
-    PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics'
+    PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics',
+    Demo: 'Demo Data & Team Showcase Hub (/demo)'
   };
 
   const isFullModalScreen = currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
@@ -283,6 +390,7 @@ function AppContent() {
           onNavigate={handleNavigate}
           isOpenMobile={isMobileNavOpen}
           onCloseMobile={() => setIsMobileNavOpen(false)}
+          onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         />
       )}
 
@@ -296,8 +404,11 @@ function AppContent() {
             onNavigate={handleNavigate}
             onOpenMobileMenu={() => setIsMobileNavOpen(true)}
             onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
-            tasks={tasks}
+            onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
+            tasks={scopedTasks}
             onSelectTask={setSelectedTask}
+            managedSector={managedSector}
+            onSelectManagedSector={setManagedSector}
           />
         )}
 
@@ -323,10 +434,10 @@ function AppContent() {
             >
               {currentScreen === 'Dashboard' && (
                 <DashboardScreen
-                  tasks={tasks}
+                  tasks={scopedTasks}
                   activities={activities}
-                  team={team}
-                  locations={locations}
+                  team={scopedTeam}
+                  locations={scopedLocations}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                 />
@@ -334,9 +445,9 @@ function AppContent() {
 
               {currentScreen === 'GlobalSearch' && (
                 <GlobalSearchScreen
-                  tasks={tasks}
-                  team={team}
-                  locations={locations}
+                  tasks={scopedTasks}
+                  team={scopedTeam}
+                  locations={scopedLocations}
                   timeline={timeline}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
@@ -352,7 +463,7 @@ function AppContent() {
 
               {currentScreen === 'TaskBoard' && (
                 <TaskBoardScreen
-                  tasks={tasks}
+                  tasks={scopedTasks}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
@@ -367,9 +478,9 @@ function AppContent() {
                   onNavigate={handleNavigate}
                 >
                   <UserStoriesScreen
-                    stories={stories}
-                    locations={locations}
-                    tasks={tasks}
+                    stories={scopedStories}
+                    locations={scopedLocations}
+                    tasks={scopedTasks}
                     onOpenMobileMenu={() => setIsMobileNavOpen(true)}
                     onNavigate={handleNavigate}
                   />
@@ -378,8 +489,8 @@ function AppContent() {
 
               {currentScreen === 'AttendanceLog' && (
                 <AttendanceLogScreen
-                  attendanceLogs={attendanceLogs}
-                  team={team}
+                  attendanceLogs={scopedAttendance}
+                  team={scopedTeam}
                   onOpenMobileMenu={() => setIsMobileNavOpen(true)}
                   onNavigate={handleNavigate}
                 />
@@ -387,9 +498,9 @@ function AppContent() {
 
               {currentScreen === 'PerformanceAnalytics' && (
                 <PerformanceAnalyticsScreen
-                  tasks={tasks}
-                  attendanceLogs={attendanceLogs}
-                  team={team}
+                  tasks={scopedTasks}
+                  attendanceLogs={scopedAttendance}
+                  team={scopedTeam}
                   onOpenMobileMenu={() => setIsMobileNavOpen(true)}
                   onNavigate={handleNavigate}
                 />
@@ -404,8 +515,8 @@ function AppContent() {
                 >
                   <AsyncReportsScreen
                     asyncJobs={asyncJobs}
-                    tasks={tasks}
-                    attendanceLogs={attendanceLogs}
+                    tasks={scopedTasks}
+                    attendanceLogs={scopedAttendance}
                     onOpenMobileMenu={() => setIsMobileNavOpen(true)}
                     onNavigate={handleNavigate}
                   />
@@ -414,8 +525,8 @@ function AppContent() {
 
               {currentScreen === 'ProjectMap' && (
                 <ProjectMapScreen
-                  locations={locations}
-                  tasks={tasks}
+                  locations={scopedLocations}
+                  tasks={scopedTasks}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                 />
@@ -426,13 +537,13 @@ function AppContent() {
               )}
 
               {currentScreen === 'TeamSync' && (
-                <TeamSyncScreen team={team} onNavigate={handleNavigate} />
+                <TeamSyncScreen team={scopedTeam} onNavigate={handleNavigate} />
               )}
 
               {currentScreen === 'NewTask' && (
                 <NewTaskScreen
-                  team={team}
-                  locations={locations}
+                  team={scopedTeam}
+                  locations={scopedLocations}
                   onAddTask={handleAddTask}
                   onNavigate={handleNavigate}
                 />
@@ -446,7 +557,7 @@ function AppContent() {
                   onNavigate={handleNavigate}
                 >
                   <NewProjectScreen
-                    team={team}
+                    team={scopedTeam}
                     onAddProject={handleAddProject}
                     onNavigate={handleNavigate}
                   />
@@ -455,7 +566,7 @@ function AppContent() {
 
               {currentScreen === 'TaskBoardActivity' && (
                 <TaskBoardActivityScreen
-                  tasks={tasks}
+                  tasks={scopedTasks}
                   activities={activities}
                   selectedTask={selectedTask}
                   onNavigate={handleNavigate}
@@ -475,9 +586,36 @@ function AppContent() {
                   onNavigate={handleNavigate}
                 />
               )}
+
+              {currentScreen === 'Demo' && (
+                <DemoDataScreen
+                  onNavigate={handleNavigate}
+                  onSeedDemoData={handleSeedDemoData}
+                  onClearAllData={handleClearAllData}
+                  onStartWalkthrough={(role) => {
+                    setWalkthroughRole(role);
+                    setIsWalkthroughOpen(true);
+                  }}
+                  tasksCount={tasks.length}
+                  teamCount={team.length}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Global Interactive Guided Walkthrough Modal */}
+        <InteractiveWalkthrough
+          isOpen={isWalkthroughOpen}
+          onClose={() => setIsWalkthroughOpen(false)}
+          activeRole={walkthroughRole}
+          onSwitchRole={(newRole) => {
+            setWalkthroughRole(newRole);
+            switchActiveRole(newRole);
+          }}
+          onNavigate={handleNavigate}
+          onSeedDemoData={handleSeedDemoData}
+        />
       </div>
     </div>
   );

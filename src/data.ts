@@ -1,12 +1,17 @@
-import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation } from './types';
+import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob } from './types';
 
-export const INITIAL_TASKS: Task[] = [
+// ==========================================
+// DEMO DATA (ALL TEAMS & SECTORS FOR /demo)
+// ==========================================
+
+export const DEMO_TASKS: Task[] = [
   {
     id: 'TASK-101',
     code: 'SAH-801',
     title: 'Hydrological Flow Assessment & Aquifer Survey',
     status: 'in_progress',
     priority: 'high',
+    teamSector: 'Hydro-Geology',
     assignee: {
       name: 'Amara Vance',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
@@ -27,6 +32,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Solar Microgrid Inverter Optimization',
     status: 'review',
     priority: 'urgent',
+    teamSector: 'Grid Architecture',
     assignee: {
       name: 'Tariq Al-Mansoor',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
@@ -47,6 +53,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Autonomous Sand Shield Canopy Calibration',
     status: 'todo',
     priority: 'medium',
+    teamSector: 'Field Robotics',
     assignee: {
       name: 'Elena Rostova',
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
@@ -67,6 +74,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Environmental Impact Assessment & Species Census',
     status: 'done',
     priority: 'low',
+    teamSector: 'Ecology & Environment',
     assignee: {
       name: 'Kofi Mensah',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
@@ -87,6 +95,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Satellite Ground Station Microwave Relay Alignment',
     status: 'backlog',
     priority: 'medium',
+    teamSector: 'SatCom Telecom',
     assignee: {
       name: 'Maya Lin',
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
@@ -107,6 +116,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Desalination Filtration Unit Filter Replacement',
     status: 'in_progress',
     priority: 'high',
+    teamSector: 'Hydro-Geology',
     assignee: {
       name: 'Amara Vance',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
@@ -123,7 +133,7 @@ export const INITIAL_TASKS: Task[] = [
   }
 ];
 
-export const INITIAL_ACTIVITIES: Activity[] = [
+export const DEMO_ACTIVITIES: Activity[] = [
   {
     id: 'ACT-1',
     user: 'Amara Vance',
@@ -176,11 +186,12 @@ export const INITIAL_ACTIVITIES: Activity[] = [
   }
 ];
 
-export const INITIAL_TEAM: TeamMember[] = [
+export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-1',
     name: 'Amara Vance',
     role: 'Lead Hydro-Geologist',
+    teamSector: 'Hydro-Geology',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     email: 'a.vance@sahara-agile.org',
     status: 'in_field',
@@ -194,6 +205,7 @@ export const INITIAL_TEAM: TeamMember[] = [
     id: 'TM-2',
     name: 'Tariq Al-Mansoor',
     role: 'Grid Architect & Energy Lead',
+    teamSector: 'Grid Architecture',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     email: 't.mansoor@sahara-agile.org',
     status: 'active',
@@ -207,6 +219,7 @@ export const INITIAL_TEAM: TeamMember[] = [
     id: 'TM-3',
     name: 'Elena Rostova',
     role: 'Robotics & Automation Lead',
+    teamSector: 'Field Robotics',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     email: 'e.rostova@sahara-agile.org',
     status: 'active',
@@ -220,6 +233,7 @@ export const INITIAL_TEAM: TeamMember[] = [
     id: 'TM-4',
     name: 'Kofi Mensah',
     role: 'Ecology & Environmental Lead',
+    teamSector: 'Ecology & Environment',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
     email: 'k.mensah@sahara-agile.org',
     status: 'in_field',
@@ -233,6 +247,7 @@ export const INITIAL_TEAM: TeamMember[] = [
     id: 'TM-5',
     name: 'Maya Lin',
     role: 'SatCom & Fiber Network Lead',
+    teamSector: 'SatCom Telecom',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
     email: 'm.lin@sahara-agile.org',
     status: 'busy',
@@ -244,7 +259,7 @@ export const INITIAL_TEAM: TeamMember[] = [
   }
 ];
 
-export const INITIAL_TIMELINE: TimelineMilestone[] = [
+export const DEMO_TIMELINE: TimelineMilestone[] = [
   {
     id: 'PH-1',
     phase: 'Phase 1',
@@ -291,7 +306,7 @@ export const INITIAL_TIMELINE: TimelineMilestone[] = [
   }
 ];
 
-export const INITIAL_LOCATIONS: SiteLocation[] = [
+export const DEMO_LOCATIONS: SiteLocation[] = [
   {
     id: 'LOC-1',
     name: 'Al-Kufra Hydro Research Hub',
@@ -369,7 +384,7 @@ export const INITIAL_LOCATIONS: SiteLocation[] = [
   }
 ];
 
-export const INITIAL_STORIES: import('./types').UserStory[] = [
+export const DEMO_STORIES: UserStory[] = [
   {
     id: 'US-101',
     projectId: 'LOC-1',
@@ -384,6 +399,7 @@ export const INITIAL_STORIES: import('./types').UserStory[] = [
     points: 8,
     status: 'in_progress',
     assigneeName: 'Amara Vance',
+    teamSector: 'Hydro-Geology',
     createdAt: '2026-08-01',
     updatedAt: '2026-08-07'
   },
@@ -401,6 +417,7 @@ export const INITIAL_STORIES: import('./types').UserStory[] = [
     points: 5,
     status: 'completed',
     assigneeName: 'Tariq Al-Mansoor',
+    teamSector: 'Grid Architecture',
     createdAt: '2026-07-25',
     updatedAt: '2026-08-05'
   },
@@ -418,12 +435,13 @@ export const INITIAL_STORIES: import('./types').UserStory[] = [
     points: 13,
     status: 'backlog',
     assigneeName: 'Elena Rostova',
+    teamSector: 'Field Robotics',
     createdAt: '2026-08-03',
     updatedAt: '2026-08-08'
   }
 ];
 
-export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
+export const DEMO_ATTENDANCE: AttendanceLog[] = [
   {
     id: 'ATT-1',
     userId: 'USR-01',
@@ -440,7 +458,8 @@ export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
     overtimeHours: 0.75,
     approvalStatus: 'approved',
     approvedBy: 'Director Council',
-    managerNotes: 'Verified with pressure sensor telemetry log.'
+    managerNotes: 'Verified with pressure sensor telemetry log.',
+    teamSector: 'Hydro-Geology'
   },
   {
     id: 'ATT-2',
@@ -453,7 +472,8 @@ export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
     date: '2026-08-08',
     locationName: 'Djanet Microgrid',
     breakMinutes: 30,
-    approvalStatus: 'pending'
+    approvalStatus: 'pending',
+    teamSector: 'Grid Architecture'
   },
   {
     id: 'ATT-3',
@@ -466,7 +486,8 @@ export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
     date: '2026-08-08',
     locationName: 'Chott el Djerid Hub',
     breakMinutes: 15,
-    approvalStatus: 'pending'
+    approvalStatus: 'pending',
+    teamSector: 'Field Robotics'
   },
   {
     id: 'ATT-4',
@@ -484,7 +505,8 @@ export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
     overtimeHours: 2.5,
     approvalStatus: 'approved',
     approvedBy: 'Amara Vance',
-    managerNotes: 'Commended for emergency response during gale alert.'
+    managerNotes: 'Commended for emergency response during gale alert.',
+    teamSector: 'Ecology & Environment'
   },
   {
     id: 'ATT-5',
@@ -502,28 +524,12 @@ export const INITIAL_ATTENDANCE: import('./types').AttendanceLog[] = [
     overtimeHours: 0,
     approvalStatus: 'approved',
     approvedBy: 'Amara Vance',
-    managerNotes: 'All clear.'
-  },
-  {
-    id: 'ATT-6',
-    userId: 'USR-01',
-    userName: 'Amara Vance',
-    userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-06T07:45:00.000Z',
-    clockOutTime: '2026-08-06T16:45:00.000Z',
-    totalHours: 9.0,
-    status: 'clocked_out',
-    workNotes: 'Water table baseline sensor calibration.',
-    date: '2026-08-06',
-    locationName: 'Al-Kufra Hydro Site',
-    breakMinutes: 45,
-    overtimeHours: 1.0,
-    approvalStatus: 'approved',
-    approvedBy: 'Director Council'
+    managerNotes: 'All clear.',
+    teamSector: 'SatCom Telecom'
   }
 ];
 
-export const INITIAL_ASYNC_JOBS: import('./types').AsyncJob[] = [
+export const DEMO_ASYNC_JOBS: AsyncJob[] = [
   {
     id: 'JOB-801',
     title: 'Weekly Field Sprint Telemetry & Progress Audit',
@@ -547,3 +553,41 @@ export const INITIAL_ASYNC_JOBS: import('./types').AsyncJob[] = [
     completedAt: '2026-08-01T00:01:40.000Z'
   }
 ];
+
+// ==========================================
+// CLEAN DEFAULT INITIAL STATE (EMPTY)
+// ==========================================
+
+export const INITIAL_TASKS: Task[] = [];
+export const INITIAL_ACTIVITIES: Activity[] = [];
+export const INITIAL_TEAM: TeamMember[] = [];
+export const INITIAL_TIMELINE: TimelineMilestone[] = [];
+export const INITIAL_LOCATIONS: SiteLocation[] = [];
+export const INITIAL_STORIES: UserStory[] = [];
+export const INITIAL_ATTENDANCE: AttendanceLog[] = [];
+export const INITIAL_ASYNC_JOBS: AsyncJob[] = [];
+
+// Helper functions for /demo
+export function getAllDemoData() {
+  return {
+    tasks: DEMO_TASKS,
+    activities: DEMO_ACTIVITIES,
+    team: DEMO_TEAM,
+    timeline: DEMO_TIMELINE,
+    locations: DEMO_LOCATIONS,
+    stories: DEMO_STORIES,
+    attendance: DEMO_ATTENDANCE,
+    jobs: DEMO_ASYNC_JOBS,
+  };
+}
+
+export function getDemoTeams() {
+  return [
+    { id: 'all', name: 'All Teams & Sectors', count: DEMO_TEAM.length },
+    { id: 'hydro', name: 'Hydro-Geology Team', lead: 'Amara Vance', role: 'Lead Hydro-Geologist' },
+    { id: 'grid', name: 'Grid Architecture Team', lead: 'Tariq Al-Mansoor', role: 'Grid Architect & Energy Lead' },
+    { id: 'robotics', name: 'Field Robotics & Automation', lead: 'Elena Rostova', role: 'Robotics & Automation Lead' },
+    { id: 'ecology', name: 'Ecology & Environment', lead: 'Kofi Mensah', role: 'Ecology Lead' },
+    { id: 'telecom', name: 'SatCom & Fiber Telecom', lead: 'Maya Lin', role: 'Telecom Engineer' },
+  ];
+}

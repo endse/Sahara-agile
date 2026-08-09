@@ -3,40 +3,32 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
-  query,
-  orderBy,
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob } from '../types';
 import {
-  INITIAL_TASKS,
-  INITIAL_LOCATIONS,
-  INITIAL_ACTIVITIES,
-  INITIAL_TEAM,
-  INITIAL_TIMELINE,
-  INITIAL_STORIES,
-  INITIAL_ATTENDANCE,
-  INITIAL_ASYNC_JOBS,
+  DEMO_TASKS,
+  DEMO_LOCATIONS,
+  DEMO_ACTIVITIES,
+  DEMO_TEAM,
+  DEMO_TIMELINE,
+  DEMO_STORIES,
+  DEMO_ATTENDANCE,
+  DEMO_ASYNC_JOBS,
 } from '../data';
 
 // --- TASKS ---
 export const subscribeTasks = (onData: (tasks: Task[]) => void) => {
   const colRef = collection(db, 'tasks');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      // Seed default tasks
-      for (const t of INITIAL_TASKS) {
-        await setDoc(doc(db, 'tasks', t.id), t);
-      }
-    } else {
-      const list: Task[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as Task);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: Task[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as Task);
+    });
+    onData(list);
   });
 };
 
@@ -51,18 +43,12 @@ export const updateTaskStatus = async (taskId: string, status: Task['status']) =
 // --- LOCATIONS (PROJECTS) ---
 export const subscribeLocations = (onData: (locations: SiteLocation[]) => void) => {
   const colRef = collection(db, 'locations');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const loc of INITIAL_LOCATIONS) {
-        await setDoc(doc(db, 'locations', loc.id), loc);
-      }
-    } else {
-      const list: SiteLocation[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as SiteLocation);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: SiteLocation[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as SiteLocation);
+    });
+    onData(list);
   });
 };
 
@@ -73,18 +59,12 @@ export const saveLocation = async (location: SiteLocation) => {
 // --- ACTIVITIES ---
 export const subscribeActivities = (onData: (activities: Activity[]) => void) => {
   const colRef = collection(db, 'activities');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const act of INITIAL_ACTIVITIES) {
-        await setDoc(doc(db, 'activities', act.id), act);
-      }
-    } else {
-      const list: Activity[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as Activity);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: Activity[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as Activity);
+    });
+    onData(list);
   });
 };
 
@@ -95,18 +75,12 @@ export const saveActivity = async (activity: Activity) => {
 // --- TEAM ---
 export const subscribeTeam = (onData: (team: TeamMember[]) => void) => {
   const colRef = collection(db, 'team');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const member of INITIAL_TEAM) {
-        await setDoc(doc(db, 'team', member.id), member);
-      }
-    } else {
-      const list: TeamMember[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as TeamMember);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: TeamMember[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as TeamMember);
+    });
+    onData(list);
   });
 };
 
@@ -117,18 +91,12 @@ export const saveTeamMember = async (member: TeamMember) => {
 // --- TIMELINE ---
 export const subscribeTimeline = (onData: (timeline: TimelineMilestone[]) => void) => {
   const colRef = collection(db, 'timeline');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const item of INITIAL_TIMELINE) {
-        await setDoc(doc(db, 'timeline', item.id), item);
-      }
-    } else {
-      const list: TimelineMilestone[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as TimelineMilestone);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: TimelineMilestone[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as TimelineMilestone);
+    });
+    onData(list);
   });
 };
 
@@ -139,18 +107,12 @@ export const saveTimelineMilestone = async (item: TimelineMilestone) => {
 // --- USER STORIES ---
 export const subscribeStories = (onData: (stories: UserStory[]) => void) => {
   const colRef = collection(db, 'stories');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const story of INITIAL_STORIES) {
-        await setDoc(doc(db, 'stories', story.id), story);
-      }
-    } else {
-      const list: UserStory[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as UserStory);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: UserStory[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as UserStory);
+    });
+    onData(list);
   });
 };
 
@@ -161,18 +123,12 @@ export const saveStory = async (story: UserStory) => {
 // --- ATTENDANCE & WORK LOGS ---
 export const subscribeAttendance = (onData: (logs: AttendanceLog[]) => void) => {
   const colRef = collection(db, 'attendance');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const log of INITIAL_ATTENDANCE) {
-        await setDoc(doc(db, 'attendance', log.id), log);
-      }
-    } else {
-      const list: AttendanceLog[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as AttendanceLog);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: AttendanceLog[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as AttendanceLog);
+    });
+    onData(list);
   });
 };
 
@@ -183,21 +139,68 @@ export const saveAttendanceLog = async (log: AttendanceLog) => {
 // --- ASYNC JOBS ---
 export const subscribeAsyncJobs = (onData: (jobs: AsyncJob[]) => void) => {
   const colRef = collection(db, 'async_jobs');
-  return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty) {
-      for (const job of INITIAL_ASYNC_JOBS) {
-        await setDoc(doc(db, 'async_jobs', job.id), job);
-      }
-    } else {
-      const list: AsyncJob[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as AsyncJob);
-      });
-      onData(list);
-    }
+  return onSnapshot(colRef, (snapshot) => {
+    const list: AsyncJob[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() } as AsyncJob);
+    });
+    onData(list);
   });
 };
 
 export const saveAsyncJob = async (job: AsyncJob) => {
   await setDoc(doc(db, 'async_jobs', job.id), job, { merge: true });
+};
+
+// ========================================================
+// DEMO SEEDING & CLEARING FUNCTIONS FOR /demo
+// ========================================================
+
+export const seedDemoDataToFirestore = async () => {
+  try {
+    for (const t of DEMO_TASKS) {
+      await setDoc(doc(db, 'tasks', t.id), t);
+    }
+    for (const loc of DEMO_LOCATIONS) {
+      await setDoc(doc(db, 'locations', loc.id), loc);
+    }
+    for (const act of DEMO_ACTIVITIES) {
+      await setDoc(doc(db, 'activities', act.id), act);
+    }
+    for (const member of DEMO_TEAM) {
+      await setDoc(doc(db, 'team', member.id), member);
+    }
+    for (const item of DEMO_TIMELINE) {
+      await setDoc(doc(db, 'timeline', item.id), item);
+    }
+    for (const story of DEMO_STORIES) {
+      await setDoc(doc(db, 'stories', story.id), story);
+    }
+    for (const log of DEMO_ATTENDANCE) {
+      await setDoc(doc(db, 'attendance', log.id), log);
+    }
+    for (const job of DEMO_ASYNC_JOBS) {
+      await setDoc(doc(db, 'async_jobs', job.id), job);
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Error seeding demo data to Firestore:', err);
+    return { success: false, error: err };
+  }
+};
+
+export const clearFirestoreData = async () => {
+  try {
+    const collections = ['tasks', 'locations', 'activities', 'team', 'timeline', 'stories', 'attendance', 'async_jobs'];
+    for (const colName of collections) {
+      const snap = await getDocs(collection(db, colName));
+      for (const docSnap of snap.docs) {
+        await deleteDoc(doc(db, colName, docSnap.id));
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Error clearing Firestore data:', err);
+    return { success: false, error: err };
+  }
 };
