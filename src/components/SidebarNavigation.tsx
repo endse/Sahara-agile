@@ -60,7 +60,7 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
             )}
           </div>
 
-          {/* Active Role Indicator Card */}
+          {/* Active Role Indicator Card (Read-Only Security) */}
           <div className={`p-2.5 rounded-2xl border flex items-center justify-between text-xs ${
             activeRole === 'Manager'
               ? 'bg-[#606C38]/10 border-[#606C38]/30 text-[#4d572d]'
@@ -72,20 +72,16 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
               </span>
               <div>
                 <span className="font-bold block leading-tight">
-                  {activeRole === 'Manager' ? 'Manager Mode' : 'Employee View'}
+                  {activeRole === 'Manager' ? 'Manager Credentials' : 'Employee Access'}
                 </span>
                 <span className="text-[10px] opacity-80">
-                  {activeRole === 'Manager' ? 'Full Control' : 'Restricted Role'}
+                  {activeRole === 'Manager' ? 'Full Oversight' : 'Restricted Role'}
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => switchActiveRole(activeRole === 'Manager' ? 'Employee' : 'Manager')}
-              className="px-2 py-1 bg-white/80 hover:bg-white text-[10px] font-bold rounded-lg border shadow-2xs transition-all shrink-0"
-              title="Toggle Active Role for Testing"
-            >
-              Switch
-            </button>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/70 text-[#3D3028] border shrink-0">
+              Verified
+            </span>
           </div>
         </div>
 

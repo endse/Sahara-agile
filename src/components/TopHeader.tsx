@@ -202,22 +202,20 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </div>
         )}
 
-        {/* RBAC Active Role Badge & Quick Switcher */}
-        <button
-          onClick={() => switchActiveRole(activeRole === 'Manager' ? 'Employee' : 'Manager')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-2xs ${
+        {/* Read-Only RBAC Role Badge (Production Security) */}
+        <div
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs ${
             activeRole === 'Manager'
-              ? 'bg-[#606C38]/15 text-[#606C38] border-[#606C38]/30 hover:bg-[#606C38]/25'
-              : 'bg-blue-500/15 text-blue-800 border-blue-500/30 hover:bg-blue-500/25'
+              ? 'bg-[#606C38]/15 text-[#606C38] border-[#606C38]/30'
+              : 'bg-blue-500/15 text-blue-800 border-blue-500/30'
           }`}
-          title={`Click to switch RBAC Role. Current: ${activeRole}`}
+          title={`Authenticated Role: ${userProfile?.role || activeRole}`}
         >
           <span className="material-symbols-outlined text-base">
             {activeRole === 'Manager' ? 'admin_panel_settings' : 'badge'}
           </span>
           <span>Role: {activeRole}</span>
-          <span className="text-[10px] opacity-75 hidden xl:inline">(Switch)</span>
-        </button>
+        </div>
 
         {/* Search Trigger Button */}
         <button

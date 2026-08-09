@@ -19,6 +19,8 @@ interface DemoDataScreenProps {
   onStartWalkthrough: (role: 'Manager' | 'Employee') => void;
   tasksCount: number;
   teamCount: number;
+  activeRole?: 'Manager' | 'Employee';
+  onSwitchRole?: (role: 'Manager' | 'Employee') => void;
 }
 
 export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
@@ -28,6 +30,8 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
   onStartWalkthrough,
   tasksCount,
   teamCount,
+  activeRole = 'Manager',
+  onSwitchRole,
 }) => {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'team' | 'tasks' | 'locations' | 'stories' | 'attendance' | 'jobs'>('team');
@@ -114,28 +118,51 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
           </div>
         </div>
 
-        {/* Guided Walkthrough Launchers */}
-        <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-amber-400 text-lg">route</span>
-            <span className="text-xs font-bold text-stone-200">Interactive Guided Walkthroughs:</span>
+        {/* Guided Walkthrough Launchers & Sandbox Role Switcher */}
+        <div className="pt-6 border-t border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-400 text-lg">admin_panel_settings</span>
+              <span className="text-xs font-bold text-stone-200">Sandbox RBAC Role Simulator:</span>
+            </div>
+            <p className="text-[11px] text-stone-400 max-w-xl">
+              🔒 <strong>Security Boundary:</strong> Role switching is restricted exclusively to this <code className="text-amber-400">/demo</code> sandbox for interface testing. Main production app relies on authenticated credentials.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={() => onStartWalkthrough('Manager')}
-              className="px-4 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              onClick={() => onSwitchRole && onSwitchRole('Manager')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 border ${
+                activeRole === 'Manager'
+                  ? 'bg-[#606C38] text-white border-[#8B9B56] shadow-sm ring-2 ring-[#606C38]/40'
+                  : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
+              }`}
             >
               <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
-              <span>Launch Manager Tour</span>
+              <span>Manager Sandbox Mode</span>
             </button>
 
             <button
-              onClick={() => onStartWalkthrough('Employee')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              onClick={() => onSwitchRole && onSwitchRole('Employee')}
+              className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 border ${
+                activeRole === 'Employee'
+                  ? 'bg-blue-600 text-white border-blue-400 shadow-sm ring-2 ring-blue-500/40'
+                  : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
+              }`}
             >
               <span className="material-symbols-outlined text-sm">badge</span>
-              <span>Launch Employee Tour</span>
+              <span>Employee Sandbox Mode</span>
+            </button>
+
+            <div className="h-6 w-px bg-stone-700 hidden sm:block"></div>
+
+            <button
+              onClick={() => onStartWalkthrough('Manager')}
+              className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/40 text-amber-200 border border-amber-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">route</span>
+              <span>Launch Guided Tour</span>
             </button>
           </div>
         </div>

@@ -598,6 +598,8 @@ function AppContent() {
                   }}
                   tasksCount={tasks.length}
                   teamCount={team.length}
+                  activeRole={activeRole}
+                  onSwitchRole={switchActiveRole}
                 />
               )}
             </motion.div>

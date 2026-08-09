@@ -58,13 +58,6 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
               }`}>
                 {activeRole === 'Manager' ? 'Manager Control Mode' : 'Employee Field Workspace'}
               </span>
-
-              <button
-                onClick={() => switchActiveRole(activeRole === 'Manager' ? 'Employee' : 'Manager')}
-                className="text-[10px] font-bold underline text-[#8B5E3C] hover:text-[#3D3028]"
-              >
-                (Switch Role)
-              </button>
             </div>
 
             <h1 className="font-headline text-3xl lg:text-4xl font-light text-[#2D241E]">
