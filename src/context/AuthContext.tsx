@@ -94,7 +94,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     customName?: string,
     customRole?: string,
     teamName?: string,
-    isCreatingTeam: boolean = false
+    isCreatingTeam: boolean = false,
+    teamId?: string
   ) => {
     try {
       const userRef = doc(db, 'users', firebaseUser.uid);
@@ -108,11 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data.isTeamManager ||
           data.role?.toLowerCase().includes('manager') ||
           data.role?.toLowerCase().includes('director') ||
+          data.role?.toLowerCase().includes('admin') ||
           data.permissionStatus === 'elevated'
         ) {
           derivedActiveRole = 'Manager';
-        } else {
-          derivedActiveRole = 'Employee';
         }
         setActiveRole(derivedActiveRole);
       } else {
@@ -127,10 +127,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: customRole,
             teamName,
             isCreatingTeam,
+            teamId,
           }),
         });
 
         if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          if (errData.fallbackToClient) {
+            throw errData;
+          }
           throw new Error('Failed to synchronize user profile with secure backend.');
         }
 
@@ -148,8 +153,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         customName || firebaseUser.displayName || 'Field Operator',
         firebaseUser.email || undefined
       );
-    } catch (err) {
-      console.error('Error syncing user profile:', err);
+    } catch (err: any) {
+      console.warn('⚠️ Server-side profile sync failed, executing client-side fallback writes...', err);
+      try {
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        const docSnap = await getDoc(userRef);
+        let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
+
+        if (docSnap.exists()) {
+          const data = docSnap.data() as UserProfile;
+          setUserProfile(data);
+          derivedActiveRole = data.isTeamManager ? 'Manager' : 'Employee';
+          setActiveRole(derivedActiveRole);
+        } else {
+          let assignedRole = customRole || 'Field Technician';
+          let assignedTeam = teamName || 'Sahara Primary Sector';
+          let isManagerRole = isCreatingTeam || customRole === 'Operations Manager';
+          let initialPermission: 'pending_review' | 'approved' | 'elevated' = isManagerRole ? 'approved' : 'pending_review';
+          let finalTeamId = teamId || '';
+
+          if (isCreatingTeam) {
+            finalTeamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+            assignedRole = 'Manager';
+            isManagerRole = true;
+            initialPermission = 'approved';
+            assignedTeam = teamName || 'New Team';
+
+            // Create team document in teams collection
+            await setDoc(doc(db, 'teams', finalTeamId), {
+              id: finalTeamId,
+              name: assignedTeam,
+              managerId: firebaseUser.uid,
+              createdAt: new Date().toISOString()
+            });
+          }
+
+          const newProfile: UserProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
+            displayName: customName || firebaseUser.displayName || 'Field Operator',
+            photoURL: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+            role: assignedRole,
+            specialty: '',
+            assignedStation: '',
+            phone: '',
+            bio: '',
+            updatedAt: new Date().toISOString(),
+            permissionStatus: initialPermission,
+            teamName: assignedTeam,
+            teamId: finalTeamId,
+            isTeamManager: isManagerRole,
+          };
+
+          await setDoc(userRef, newProfile);
+          setUserProfile(newProfile);
+
+          // Create team member document
+          const teamMemberId = `TM-${firebaseUser.uid.slice(0, 8)}`;
+          await setDoc(doc(db, 'team', teamMemberId), {
+            id: teamMemberId,
+            name: newProfile.displayName,
+            email: newProfile.email,
+            role: assignedRole,
+            avatar: newProfile.photoURL,
+            status: 'active',
+            currentTask: isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
+            location: 'Al-Kufra Site A',
+            localTime: 'UTC+2 (Sahara)',
+            tasksCount: 0,
+            performance: 92,
+            teamName: assignedTeam,
+            teamId: finalTeamId,
+            permissionStatus: initialPermission,
+            requestedRole: assignedRole,
+          }, { merge: true });
+
+          derivedActiveRole = isManagerRole ? 'Manager' : 'Employee';
+          setActiveRole(derivedActiveRole);
+        }
+
+        await syncJwtCookie(
+          derivedActiveRole,
+          customName || firebaseUser.displayName || 'Field Operator',
+          firebaseUser.email || undefined
+        );
+      } catch (fallbackErr) {
+        console.error('❌ Client-side fallback synchronization failed:', fallbackErr);
+      }
     }
   };
 
@@ -171,11 +261,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     customName?: string,
     customRole?: string,
     teamName?: string,
-    isCreatingTeam: boolean = false
+    isCreatingTeam: boolean = false,
+    teamId?: string
   ) => {
     const res = await signInWithPopup(auth, googleProvider);
     if (res.user) {
-      await syncUserProfile(res.user, customName, customRole, teamName, isCreatingTeam);
+      await syncUserProfile(res.user, customName, customRole, teamName, isCreatingTeam, teamId);
     }
   };
 
@@ -192,14 +283,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name?: string,
     role?: string,
     teamName?: string,
-    isCreatingTeam?: boolean
+    isCreatingTeam?: boolean,
+    teamId?: string
   ) => {
     const res = await createUserWithEmailAndPassword(auth, email, pass);
     if (res.user) {
       if (name) {
         await updateProfile(res.user, { displayName: name });
       }
-      await syncUserProfile(res.user, name, role, teamName, isCreatingTeam);
+      await syncUserProfile(res.user, name, role, teamName, isCreatingTeam, teamId);
     }
   };
 

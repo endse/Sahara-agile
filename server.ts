@@ -2,17 +2,31 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
-import { initializeApp, getApps, getApp } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, Query } from 'firebase-admin/firestore';
 import { globalJobQueue } from './src/services/jobQueueService';
 import jwt from 'jsonwebtoken';
 
+import * as fs from 'fs';
+
 // Initialize Firebase Admin
 if (!getApps().length) {
-  initializeApp({
-    projectId: 'temp-418609',
-  });
+  // Look for a real service account file (must have private_key)
+  const serviceAccountPath = path.resolve('service-account.json');
+  if (fs.existsSync(serviceAccountPath)) {
+    const sa = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    if (sa.private_key) {
+      initializeApp({
+        credential: cert(sa),
+        projectId: sa.project_id || 'temp-418609',
+      });
+    } else {
+      initializeApp({ projectId: 'temp-418609' });
+    }
+  } else {
+    initializeApp({ projectId: 'temp-418609' });
+  }
 }
 const appInstance = getApp();
 let db: any;
@@ -76,7 +90,26 @@ if (process.env.NODE_ENV === 'test') {
     }
   };
 } else {
-  db = getFirestore(appInstance, 'ai-studio-saharaagileworks-d9e7ed38-648e-4c36-bd11-6321a10e795b');
+  // Check if we have real service account credentials
+  const serviceAccountPath = path.resolve('service-account.json');
+  const hasCredentials = fs.existsSync(serviceAccountPath) && (() => {
+    try { return !!JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8')).private_key; } catch { return false; }
+  })();
+  const hasADC = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+  if (hasCredentials || hasADC) {
+    db = getFirestore(appInstance, 'ai-studio-saharaagileworks-d9e7ed38-648e-4c36-bd11-6321a10e795b');
+  } else {
+    console.warn('⚠️ ============================================================');
+    console.warn('⚠️  NO FIREBASE SERVICE ACCOUNT FOUND');
+    console.warn('⚠️  Server-side Firestore writes are DISABLED.');
+    console.warn('⚠️  The client-side SDK will handle all reads/writes directly.');
+    console.warn('⚠️  To enable server-side writes:');
+    console.warn('⚠️    1. Download a service account key from Firebase Console');
+    console.warn('⚠️    2. Save it as service-account.json in the project root');
+    console.warn('⚠️ ============================================================');
+    db = null;
+  }
 }
 
 const app = express();
@@ -85,6 +118,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev';
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Middleware guard: block API routes that require Firestore when db is null
+const requiresDb = (req: Request, res: Response, next: NextFunction) => {
+  if (!db) {
+    return res.status(503).json({
+      error: 'Firebase Admin Firestore is not available. No service account credentials found.',
+      fallbackToClient: true
+    });
+  }
+  next();
+};
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -110,6 +154,18 @@ const authenticateJwt = async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     
+    // If db is not available, derive user info from JWT only
+    if (!db) {
+      (req as AuthenticatedRequest).user = {
+        uid: decoded.uid,
+        userName: decoded.email || 'User',
+        email: decoded.email || '',
+        role: decoded.role || 'Employee',
+        teamId: decoded.teamId || '',
+      };
+      return next();
+    }
+
     // Get user details from Firestore to append role and teamId
     let userDoc = await db.collection('users').doc(decoded.uid).get();
     
@@ -258,8 +314,16 @@ app.post('/api/auth/logout', (req, res) => {
 // Profile Sync for Strict Firestore Rules
 app.post('/api/auth/sync-profile', async (req, res) => {
   try {
-    const { idToken, customName, role, teamName, isCreatingTeam } = req.body;
+    const { idToken, customName, role, teamName, isCreatingTeam, teamId: reqTeamId } = req.body;
     if (!idToken) return res.status(401).json({ error: 'No idToken provided' });
+
+    // If db is null (no service account credentials), instruct client to handle writes
+    if (!db) {
+      return res.status(503).json({
+        error: 'Firebase Admin credentials not configured on backend. Client-side Firestore SDK will handle writes.',
+        fallbackToClient: true
+      });
+    }
 
     // Verify token to securely identify the user
     const decodedToken: any = process.env.NODE_ENV === 'test'
@@ -271,7 +335,7 @@ app.post('/api/auth/sync-profile', async (req, res) => {
     const displayName = customName || decodedToken.name || 'Field Operator';
     
     let assignedRole = role || 'Field Technician';
-    let teamId = '';
+    let teamId = reqTeamId || '';
     let initialPermission = 'pending';
     let assignedTeam = teamName || 'Sahara Primary Team';
     let isManagerRole = false;
@@ -379,7 +443,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Projects API
-app.get('/api/projects', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.get('/api/projects', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   try {
     let query: Query = db.collection('locations');
     if (req.user?.role !== 'Admin') {
@@ -393,7 +457,7 @@ app.get('/api/projects', authenticateJwt, async (req: AuthenticatedRequest, res)
   }
 });
 
-app.post('/api/projects', authenticateJwt, requireManager, async (req: AuthenticatedRequest, res) => {
+app.post('/api/projects', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
   const { name, region, lead } = req.body;
   if (!name || !region) {
     return res.status(400).json({ success: false, error: 'Project name and region required' });
@@ -417,7 +481,7 @@ app.post('/api/projects', authenticateJwt, requireManager, async (req: Authentic
 });
 
 // User Stories API
-app.get('/api/stories', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.get('/api/stories', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   try {
     const { projectId } = req.query;
     let query: Query = db.collection('stories');
@@ -435,7 +499,7 @@ app.get('/api/stories', authenticateJwt, async (req: AuthenticatedRequest, res) 
   }
 });
 
-app.post('/api/stories', authenticateJwt, requireManager, async (req: AuthenticatedRequest, res) => {
+app.post('/api/stories', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
   const { projectId, title, description, points, assigneeName } = req.body;
   if (!projectId || !title) {
     return res.status(400).json({ success: false, error: 'projectId and title are required' });
@@ -459,7 +523,7 @@ app.post('/api/stories', authenticateJwt, requireManager, async (req: Authentica
 });
 
 // Tasks API
-app.get('/api/tasks', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.get('/api/tasks', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   try {
     const { storyId } = req.query;
     let query: Query = db.collection('tasks');
@@ -477,7 +541,7 @@ app.get('/api/tasks', authenticateJwt, async (req: AuthenticatedRequest, res) =>
   }
 });
 
-app.post('/api/tasks', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.post('/api/tasks', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const { title, storyId, priority } = req.body;
   if (!title) {
     return res.status(400).json({ success: false, error: 'Task title is required' });
@@ -500,7 +564,7 @@ app.post('/api/tasks', authenticateJwt, async (req: AuthenticatedRequest, res) =
   }
 });
 
-app.patch('/api/tasks/:id/status', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.patch('/api/tasks/:id/status', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
   const { status } = req.body;
   try {
@@ -514,7 +578,7 @@ app.patch('/api/tasks/:id/status', authenticateJwt, async (req: AuthenticatedReq
 });
 
 // Attendance API
-app.get('/api/attendance', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.get('/api/attendance', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const role = req.user?.role || 'Employee';
   const teamId = req.user?.teamId;
   
@@ -537,7 +601,7 @@ app.get('/api/attendance', authenticateJwt, async (req: AuthenticatedRequest, re
   }
 });
 
-app.post('/api/attendance/clock-in', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.post('/api/attendance/clock-in', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const { locationName } = req.body;
   const now = new Date();
   const newLog = {
@@ -558,7 +622,7 @@ app.post('/api/attendance/clock-in', authenticateJwt, async (req: AuthenticatedR
   }
 });
 
-app.post('/api/attendance/clock-out', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.post('/api/attendance/clock-out', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const { id, workNotes } = req.body;
   try {
     const docRef = db.collection('attendance').doc(id);
@@ -589,7 +653,7 @@ app.post('/api/attendance/clock-out', authenticateJwt, async (req: Authenticated
   }
 });
 
-app.post('/api/attendance/approve', authenticateJwt, requireManager, async (req: AuthenticatedRequest, res) => {
+app.post('/api/attendance/approve', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
   const { logId, action, managerNotes } = req.body;
   try {
     const docRef = db.collection('attendance').doc(logId);
@@ -613,7 +677,7 @@ app.post('/api/attendance/approve', authenticateJwt, requireManager, async (req:
 });
 
 // Async Background Processing API
-app.get('/api/async-jobs', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.get('/api/async-jobs', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   try {
     let query: Query = db.collection('async_jobs');
     if (req.user?.role !== 'Admin') {
@@ -627,7 +691,7 @@ app.get('/api/async-jobs', authenticateJwt, async (req: AuthenticatedRequest, re
   }
 });
 
-app.post('/api/async-jobs', authenticateJwt, async (req: AuthenticatedRequest, res) => {
+app.post('/api/async-jobs', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
   const { title, type } = req.body;
   const newJob = {
     title: title || 'Sprint Telemetry Export',

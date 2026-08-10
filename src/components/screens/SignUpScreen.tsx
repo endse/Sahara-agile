@@ -55,12 +55,17 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const [invitedTeamId, setInvitedTeamId] = useState('');
+  const [invitedRole, setInvitedRole] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const qMode = params.get('mode');
     const qType = params.get('type');
     const inviteEmail = params.get('inviteEmail');
     const invitedTeam = params.get('team');
+    const urlTeamId = params.get('teamId');
+    const urlRole = params.get('role');
 
     if (qMode === 'signin') {
       setMode('signin');
@@ -82,6 +87,13 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
     }
     if (invitedTeam) {
       setTeamName(invitedTeam);
+    }
+    if (urlTeamId) {
+      setInvitedTeamId(urlTeamId);
+    }
+    if (urlRole) {
+      setInvitedRole(urlRole);
+      setFieldRole(urlRole);
     }
   }, []);
 
@@ -139,7 +151,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
             fullName.trim(),
             fieldRole.trim() || 'Field Technician',
             teamName.trim() || 'Sahara Primary Team',
-            false
+            false,
+            invitedTeamId || undefined
           );
         }
       } else {
@@ -181,7 +194,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
           fullName.trim() || undefined,
           fieldRole.trim() || 'Field Technician',
           teamName.trim() || undefined,
-          false
+          false,
+          invitedTeamId || undefined
         );
       } else {
         await signInWithGoogle();

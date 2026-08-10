@@ -106,8 +106,8 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       isManagerInvite: isManagerRole,
       teamName: userProfile?.teamName || 'Sahara Team',
       teamId: userProfile?.teamId || '',
-      invitedBy: 'Operations Manager',
-      invitedByEmail: 'manager@sahara-agile.org',
+      invitedBy: userProfile?.displayName || 'Operations Manager',
+      invitedByEmail: userProfile?.email || 'manager@sahara-agile.org',
       createdAt: new Date().toISOString(),
       status: 'pending',
       inviteCode,
@@ -115,7 +115,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
 
     await saveInvitation(invitation);
 
-    const inviteLink = `${window.location.origin}/?inviteEmail=${encodeURIComponent(newMemberEmail.trim())}`;
+    const inviteLink = `${window.location.origin}/?inviteEmail=${encodeURIComponent(newMemberEmail.trim())}&teamId=${encodeURIComponent(userProfile?.teamId || '')}&team=${encodeURIComponent(userProfile?.teamName || 'Sahara Team')}&role=${encodeURIComponent(newMemberRole)}`;
 
     setIsAddModalOpen(false);
     setSelectedMember(created);
