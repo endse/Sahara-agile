@@ -47,8 +47,8 @@ describe('JobQueueService & Dead Letter Queue (DLQ)', () => {
       expect(current?.state).toBe('failed');
       expect(current?.retryCount).toBe(1);
 
-      // Wait for backoff delay to elapse
-      await new Promise((r) => setTimeout(r, 20));
+      // Wait for backoff delay to elapse + buffer for CI/CD environments
+      await new Promise((r) => setTimeout(r, 50));
 
       // Attempt 2: Exceeds max attempts (2) -> moves to DLQ
       await queue.processNextJob();

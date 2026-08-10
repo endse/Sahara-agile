@@ -9,10 +9,9 @@ import {
   updateProfile,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { UserProfile, TeamMember } from '../types';
-import { findInvitationByEmail, acceptInvitation } from '../services/firestoreService';
 
 interface AuthContextType {
   user: User | null;
@@ -49,17 +48,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeRole, setActiveRole] = useState<'Manager' | 'Employee'>('Employee');
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Sync role to Express server via HttpOnly cookie JWT endpoint
-  const syncJwtCookie = async (role: 'Manager' | 'Employee', name?: string, email?: string) => {
+  // Sync session to Express server via HttpOnly cookie
+  const syncJwtCookie = async (role?: 'Manager' | 'Employee', name?: string, email?: string) => {
     try {
+      const idToken = await auth.currentUser?.getIdToken(true);
+      if (!idToken) return;
       await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role,
-          userName: name || userProfile?.displayName || 'Field Operator',
-          email: email || userProfile?.email || 'operator@sahara.io',
-        }),
+        body: JSON.stringify({ idToken }),
       });
     } catch (err) {
       console.warn('Backend JWT cookie sync note:', err);
@@ -119,111 +116,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setActiveRole(derivedActiveRole);
       } else {
-        // New User Profile Creation logic
-        const email = firebaseUser.email || '';
-        const matchedInvite = email ? await findInvitationByEmail(email) : null;
+        const idToken = await firebaseUser.getIdToken(true);
 
-        let assignedRole = customRole || 'Field Technician';
-        let assignedTeam = teamName || 'Sahara Primary Sector';
-        let isManagerRole = isCreatingTeam || customRole === 'Operations Manager';
-        let initialPermission: 'pending_review' | 'approved' | 'elevated' = isManagerRole ? 'approved' : 'pending_review';
+        const response = await fetch('/api/auth/sync-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            customName,
+            role: customRole,
+            teamName,
+            isCreatingTeam,
+          }),
+        });
 
-        if (matchedInvite) {
-          // Found invitation! Automatically join team and set role & permissions
-          assignedRole = matchedInvite.role;
-          assignedTeam = matchedInvite.teamName;
-          isManagerRole = matchedInvite.isManagerInvite || matchedInvite.role.toLowerCase().includes('manager');
-          initialPermission = 'approved';
-          await acceptInvitation(matchedInvite.id);
-        } else if (!isCreatingTeam) {
-          // Check if user was pre-invited directly into the team roster by email
-          try {
-            const teamSnap = await getDocs(collection(db, 'team'));
-            teamSnap.forEach((d) => {
-              const m = d.data() as TeamMember;
-              if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
-                assignedRole = m.role || assignedRole;
-                assignedTeam = m.teamName || assignedTeam;
-                if (m.role?.toLowerCase().includes('manager')) {
-                  isManagerRole = true;
-                }
-                initialPermission = 'approved';
-              }
-            });
-          } catch (e) {
-            console.warn('Roster check warning:', e);
-          }
+        if (!response.ok) {
+          throw new Error('Failed to synchronize user profile with secure backend.');
         }
 
-        let teamId = '';
-        if (matchedInvite) {
-          teamId = matchedInvite.teamId || '';
-        } else if (isCreatingTeam) {
-          teamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-        } else {
-          // If neither, try extracting it from roster if we found a match above
-          try {
-            const teamSnap = await getDocs(collection(db, 'team'));
-            teamSnap.forEach((d) => {
-              const m = d.data() as TeamMember;
-              if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
-                if (m.teamId) {
-                  teamId = m.teamId;
-                }
-              }
-            });
-          } catch (e) {
-            console.warn('Roster check warning:', e);
-          }
-        }
-
-        const newProfile: UserProfile = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
-          displayName: customName || firebaseUser.displayName || matchedInvite?.fullName || 'Field Operator',
-          photoURL:
-            firebaseUser.photoURL ||
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          role: assignedRole,
-          specialty: '',
-          assignedStation: '',
-          phone: '',
-          bio: '',
-          updatedAt: new Date().toISOString(),
-          permissionStatus: initialPermission,
-          teamName: assignedTeam,
-          teamId: teamId,
-          isTeamManager: isManagerRole,
-        };
-
-        await setDoc(userRef, newProfile);
+        const data = await response.json();
+        const newProfile: UserProfile = data.profile;
+        
         setUserProfile(newProfile);
 
-        // Also add user as a member in the team roster doc
-        const teamMemberRef = doc(db, 'team', `TM-${firebaseUser.uid.slice(0, 8)}`);
-        await setDoc(
-          teamMemberRef,
-          {
-            id: `TM-${firebaseUser.uid.slice(0, 8)}`,
-            name: newProfile.displayName,
-            email: newProfile.email,
-            role: assignedRole,
-            avatar: newProfile.photoURL,
-            status: 'active',
-            currentTask: isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
-            location: 'Al-Kufra Site A',
-            localTime: 'UTC+2 (Sahara)',
-            tasksCount: 0,
-            performance: 92,
-            teamName: assignedTeam,
-            teamId: teamId,
-            permissionStatus: initialPermission,
-            requestedRole: assignedRole,
-          },
-          { merge: true }
-        );
-
-        derivedActiveRole = isManagerRole ? 'Manager' : 'Employee';
+        derivedActiveRole = newProfile.isTeamManager ? 'Manager' : 'Employee';
         setActiveRole(derivedActiveRole);
       }
 

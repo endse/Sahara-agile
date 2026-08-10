@@ -1,67 +1,288 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // =========================
+    // Helper Functions
+    // =========================
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function userExists() {
+      return isSignedIn() &&
+        exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        );
     }
 
-    function hasTeamAccess(teamId) {
-      return isSignedIn() && (getUserData().teamId == teamId || teamId == null);
+    function getUserData() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
     }
+
+    function isAdmin() {
+      return userExists() &&
+        getUserData().role == 'Admin';
+    }
+
+    function isManager() {
+      return userExists() &&
+        (getUserData().role == 'Manager' ||
+         getUserData().role == 'Admin');
+    }
+
+    function belongsToTeam(teamId) {
+      return userExists() &&
+        teamId != null &&
+        getUserData().teamId == teamId;
+    }
+
+    function canAccessTeam(teamId) {
+      return belongsToTeam(teamId);
+    }
+
+    function canManageTeam(teamId) {
+      return userExists() &&
+        getUserData().teamId == teamId &&
+        (getUserData().role == 'Manager' ||
+         getUserData().role == 'Admin');
+    }
+
+
+    // =========================
+    // Users
+    // =========================
 
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == userId;
+
+      // User can read their own profile.
+      // Managers/Admins can read users in their team.
+      allow read: if isSignedIn() &&
+        (
+          request.auth.uid == userId ||
+          (
+            userExists() &&
+            resource.data.teamId == getUserData().teamId &&
+            (getUserData().role == 'Manager' ||
+             getUserData().role == 'Admin')
+          )
+        );
+
+      // User can create only their own profile.
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId;
+
+      // User can update their own profile.
+      // Prevent changing team/role unless Manager/Admin.
+      allow update: if isSignedIn() &&
+        request.auth.uid == userId &&
+        (
+          (
+            request.resource.data.teamId == resource.data.teamId &&
+            request.resource.data.role == resource.data.role
+          )
+          ||
+          isManager()
+        );
+
+      // Usually users should not be allowed to delete themselves.
+      allow delete: if isAdmin();
     }
+
+
+    // =========================
+    // Invitations
+    // =========================
 
     match /invitations/{inviteId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+
+      allow read: if isManager();
+
+      allow create: if isManager();
+
+      allow update, delete: if isManager();
     }
+
+
+    // =========================
+    // Tasks
+    // =========================
 
     match /tasks/{taskId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
+
+
+    // =========================
+    // Locations
+    // =========================
 
     match /locations/{locationId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
+
+
+    // =========================
+    // Activities
+    // =========================
 
     match /activities/{activityId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
+
+
+    // =========================
+    // Timeline
+    // =========================
 
     match /timeline/{timelineId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
+
+
+    // =========================
+    // Team Members
+    // =========================
 
     match /team/{teamMemberId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canManageTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canManageTeam(resource.data.teamId) &&
+        canManageTeam(request.resource.data.teamId);
+
+      allow delete: if canManageTeam(
+        resource.data.teamId
+      );
     }
+
+
+    // =========================
+    // Stories
+    // =========================
 
     match /stories/{storyId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
 
-    // Attendance RBAC: Employees can log their own hours; Managers have global write access
+
+    // =========================
+    // Attendance
+    // =========================
+
     match /attendance/{attendanceId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
     }
+
+
+    // =========================
+    // Async Jobs
+    // =========================
 
     match /async_jobs/{jobId} {
-      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
-      allow create: if hasTeamAccess(request.resource.data.teamId);
+
+      allow read: if canAccessTeam(resource.data.teamId);
+
+      allow create: if canAccessTeam(
+        request.resource.data.teamId
+      );
+
+      allow update: if
+        canAccessTeam(resource.data.teamId) &&
+        canAccessTeam(request.resource.data.teamId);
+
+      allow delete: if canAccessTeam(resource.data.teamId);
+    }
+
+
+    // =========================
+    // Teams
+    // =========================
+
+    match /teams/{teamId} {
+
+      allow read: if belongsToTeam(teamId);
+
+      allow create: if isSignedIn();
+
+      allow update: if canManageTeam(teamId);
+
+      allow delete: if isAdmin();
     }
   }
 }

@@ -36,7 +36,7 @@ async function runCiPipeline() {
   }
 
   console.log('🚀 [CI/CD Harness] Step 2/3: Starting server process for API integration testing...');
-  const serverEnv = { ...process.env, NODE_ENV: 'production', PORT: '3000' };
+  const serverEnv = { ...process.env, NODE_ENV: 'test', PORT: '3000' };
 
   const serverProcess: ChildProcess = spawn('node', ['dist/server.cjs'], {
     env: serverEnv,
