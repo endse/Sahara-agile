@@ -102,7 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const docSnap = await getDoc(userRef);
       let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
 
-      if (docSnap.exists()) {
+      // Only load existing profile if not creating a team or supplying explicit signup role
+      if (docSnap.exists() && !isCreatingTeam && !customRole) {
         const data = docSnap.data() as UserProfile;
         setUserProfile(data);
         if (
@@ -160,10 +161,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const docSnap = await getDoc(userRef);
         let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
 
-        if (docSnap.exists()) {
+        if (docSnap.exists() && !isCreatingTeam && !customRole) {
           const data = docSnap.data() as UserProfile;
           setUserProfile(data);
-          derivedActiveRole = data.isTeamManager ? 'Manager' : 'Employee';
+          if (
+            data.isTeamManager ||
+            data.role?.toLowerCase().includes('manager') ||
+            data.role?.toLowerCase().includes('director') ||
+            data.role?.toLowerCase().includes('admin') ||
+            data.permissionStatus === 'elevated'
+          ) {
+            derivedActiveRole = 'Manager';
+          }
           setActiveRole(derivedActiveRole);
         } else {
           let assignedRole = customRole || 'Field Technician';
