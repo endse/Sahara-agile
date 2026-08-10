@@ -72,6 +72,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       locationName: selectedStation,
       breakMinutes: selectedBreakMinutes,
       approvalStatus: 'pending',
+      teamId: userProfile?.teamId || '',
     };
 
     await saveAttendanceLog(newLog);
@@ -97,6 +98,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       status: 'clocked_out',
       workNotes: workNotesInput.trim() || 'Completed daily field operational shift.',
       approvalStatus: 'pending',
+      teamId: userProfile?.teamId || '',
     };
 
     await saveAttendanceLog(updatedLog);
@@ -188,6 +190,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       approvalStatus: 'approved',
       approvedBy: currentUserName,
       managerNotes: `Manually added by manager ${currentUserName}`,
+      teamId: userProfile?.teamId || '',
     };
 
     await saveAttendanceLog(newLog);

@@ -3,6 +3,7 @@ import { AsyncJob, Task, AttendanceLog } from '../../types';
 import { saveAsyncJob } from '../../services/firestoreService';
 import { globalJobQueue, QueueStats, QueueJob } from '../../services/jobQueueService';
 import { generateMidnightProductivityReport, GeneratedReport } from '../../services/productivityReportService';
+import { useAuth } from '../../context/AuthContext';
 
 interface AsyncReportsScreenProps {
   asyncJobs: AsyncJob[];
@@ -19,6 +20,7 @@ export const AsyncReportsScreen: React.FC<AsyncReportsScreenProps> = ({
   onOpenMobileMenu,
   onNavigate,
 }) => {
+  const { userProfile } = useAuth();
   const [selectedJobType, setSelectedJobType] = useState<AsyncJob['type']>('sprint_summary');
   const [simulatingFailures, setSimulatingFailures] = useState(false);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
@@ -162,6 +164,7 @@ export const AsyncReportsScreen: React.FC<AsyncReportsScreenProps> = ({
       progress: job.progress,
       retryCount: job.retryCount,
       createdAt: job.createdAt,
+      teamId: userProfile?.teamId || '',
     });
   };
 

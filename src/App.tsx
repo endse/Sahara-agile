@@ -56,6 +56,9 @@ import {
   scopeLocationsByTeam,
   scopeStoriesByTeam,
   scopeAttendanceByTeam,
+  scopeActivitiesByTeam,
+  scopeTimelineByTeam,
+  scopeAsyncJobsByTeam,
 } from './lib/teamScopeUtils';
 
 function AppContent() {
@@ -89,14 +92,29 @@ function AppContent() {
 
   // Real-time Firestore Subscriptions
   useEffect(() => {
-    const unsubTasks = subscribeTasks((data) => setTasks(data));
-    const unsubLocs = subscribeLocations((data) => setLocations(data));
-    const unsubActs = subscribeActivities((data) => setActivities(data));
-    const unsubTeam = subscribeTeam((data) => setTeam(data));
-    const unsubTimeline = subscribeTimeline((data) => setTimeline(data));
-    const unsubStories = subscribeStories((data) => setStories(data));
-    const unsubAttendance = subscribeAttendance((data) => setAttendanceLogs(data));
-    const unsubJobs = subscribeAsyncJobs((data) => setAsyncJobs(data));
+    if (!userProfile?.teamId) {
+      // Clear data when logged out or pending team assignment
+      setTasks([]);
+      setLocations([]);
+      setActivities([]);
+      setTeam([]);
+      setTimeline([]);
+      setStories([]);
+      setAttendanceLogs([]);
+      setAsyncJobs([]);
+      return;
+    }
+
+    const teamId = userProfile.teamId;
+
+    const unsubTasks = subscribeTasks(teamId, (data) => setTasks(data));
+    const unsubLocs = subscribeLocations(teamId, (data) => setLocations(data));
+    const unsubActs = subscribeActivities(teamId, (data) => setActivities(data));
+    const unsubTeam = subscribeTeam(teamId, (data) => setTeam(data));
+    const unsubTimeline = subscribeTimeline(teamId, (data) => setTimeline(data));
+    const unsubStories = subscribeStories(teamId, (data) => setStories(data));
+    const unsubAttendance = subscribeAttendance(teamId, (data) => setAttendanceLogs(data));
+    const unsubJobs = subscribeAsyncJobs(teamId, (data) => setAsyncJobs(data));
 
     return () => {
       unsubTasks();
@@ -108,17 +126,17 @@ function AppContent() {
       unsubAttendance();
       unsubJobs();
     };
-  }, []);
-
-  // Production Manager Scope State
-  const [managedSector, setManagedSector] = useState<string>('All Teams');
+  }, [userProfile?.teamId]);
 
   // Scope Data for Production Application Views
-  const scopedTasks = scopeTasksByTeam(tasks, userProfile, activeRole, managedSector);
-  const scopedTeam = scopeTeamBySector(team, userProfile, activeRole, managedSector);
-  const scopedLocations = scopeLocationsByTeam(locations, userProfile, activeRole, managedSector);
-  const scopedStories = scopeStoriesByTeam(stories, userProfile, activeRole, managedSector);
-  const scopedAttendance = scopeAttendanceByTeam(attendanceLogs, userProfile, activeRole, managedSector);
+  const scopedTasks = scopeTasksByTeam(tasks, userProfile, activeRole);
+  const scopedTeam = scopeTeamBySector(team, userProfile, activeRole);
+  const scopedLocations = scopeLocationsByTeam(locations, userProfile, activeRole);
+  const scopedStories = scopeStoriesByTeam(stories, userProfile, activeRole);
+  const scopedAttendance = scopeAttendanceByTeam(attendanceLogs, userProfile, activeRole);
+  const scopedActivities = scopeActivitiesByTeam(activities, userProfile, activeRole);
+  const scopedTimeline = scopeTimelineByTeam(timeline, userProfile, activeRole);
+  const scopedAsyncJobs = scopeAsyncJobsByTeam(asyncJobs, userProfile, activeRole);
 
   // Sync selected task when tasks change
   useEffect(() => {
@@ -158,8 +176,12 @@ function AppContent() {
   }, [currentScreen]);
 
   const handleAddTask = async (newTask: Task) => {
-    setTasks(prev => [newTask, ...prev]);
-    await saveTask(newTask);
+    const enhancedTask: Task = {
+        ...newTask,
+        teamId: userProfile?.teamId || '',
+      };
+    setTasks(prev => [enhancedTask, ...prev]);
+    await saveTask(enhancedTask);
 
     // Log activity
     const newAct: Activity = {
@@ -170,7 +192,8 @@ function AppContent() {
       target: `${newTask.code} (${newTask.title})`,
       time: 'Just now',
       type: 'status',
-      detail: `Assigned to ${newTask.assignee.name} at ${newTask.region}`
+      detail: `Assigned to ${newTask.assignee.name} at ${newTask.region}`,
+      teamId: userProfile?.teamId || '',
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
@@ -200,7 +223,8 @@ function AppContent() {
       taskCount: 0,
       crewCount: 4,
       lead: projectData.lead,
-      temperature: '35°C'
+      temperature: '',
+      teamId: userProfile?.teamId || '',
     };
     setLocations(prev => [newLoc, ...prev]);
     await saveLocation(newLoc);
@@ -215,7 +239,8 @@ function AppContent() {
       status: projectData.status === 'completed' ? 'completed' : projectData.status === 'active' ? 'in_progress' : 'upcoming',
       progress: projectData.status === 'completed' ? 100 : projectData.status === 'active' ? 10 : 0,
       lead: projectData.lead,
-      region: projectData.region
+      region: projectData.region,
+      teamId: userProfile?.teamId || '',
     };
     setTimeline(prev => [newMilestone, ...prev]);
     await saveTimelineMilestone(newMilestone);
@@ -229,20 +254,23 @@ function AppContent() {
       target: projectData.name,
       time: 'Just now',
       type: 'location',
-      detail: `Directed by ${projectData.lead} in ${projectData.region}`
+      detail: `Directed by ${projectData.lead} in ${projectData.region}`,
+      teamId: userProfile?.teamId || '',
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
   };
 
   const handleAddActivity = async (newAct: Activity) => {
-    setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
+    const enhancedAct: Activity = { ...newAct, teamId: userProfile?.teamId || '' };
+    setActivities(prev => [enhancedAct, ...prev]);
+    await saveActivity(enhancedAct);
   };
 
   const handleAddTeamMember = async (newMember: TeamMember) => {
-    setTeam(prev => [newMember, ...prev]);
-    await saveTeamMember(newMember);
+    const enhancedMember: TeamMember = { ...newMember, teamId: userProfile?.teamId || '' };
+    setTeam(prev => [enhancedMember, ...prev]);
+    await saveTeamMember(enhancedMember);
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
@@ -252,7 +280,8 @@ function AppContent() {
       target: `${newMember.name} (${newMember.role})`,
       time: 'Just now',
       type: 'assignment',
-      detail: `Assigned to ${newMember.location || 'Al-Kufra Site A'} - Sector: ${newMember.teamSector || 'Hydro-Geology'}`
+      detail: `Assigned to ${newMember.location || 'Al-Kufra Site A'} - Team: ${newMember.teamName || 'Sahara Team'}`,
+      teamId: userProfile?.teamId || '',
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
@@ -270,7 +299,8 @@ function AppContent() {
       target: `${updatedMember.name} (${updatedMember.role})`,
       time: 'Just now',
       type: 'status',
-      detail: `Status: ${updatedMember.permissionStatus || 'Approved'} - Sector: ${updatedMember.teamSector || 'General'}`
+      detail: `Status: ${updatedMember.permissionStatus || 'Approved'} - Team: ${updatedMember.teamName || 'General'}`,
+      teamId: userProfile?.teamId || '',
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
@@ -309,6 +339,7 @@ function AppContent() {
         requiresManagerApproval: true,
         approvalStatus: 'pending',
         pendingStatus: newStatus,
+        teamId: userProfile?.teamId || '',
       };
 
       setActivities((prev) => [newAct, ...prev]);
@@ -339,6 +370,7 @@ function AppContent() {
         type: 'status',
         detail: `Moved from ${taskObj.status.toUpperCase()} to ${newStatus.toUpperCase()}`,
         taskId: taskObj.id,
+        teamId: userProfile?.teamId || '',
       };
 
       setActivities((prev) => [newAct, ...prev]);
@@ -377,6 +409,7 @@ function AppContent() {
         taskObj.statusRequestedBy || 'Employee'
       }`,
       taskId: taskObj.id,
+      teamId: userProfile?.teamId || '',
     };
 
     setActivities((prev) => [newAct, ...prev]);
@@ -409,6 +442,7 @@ function AppContent() {
       type: 'status',
       detail: `Declined status change request for task "${taskObj.title}"`,
       taskId: taskObj.id,
+      teamId: userProfile?.teamId || '',
     };
 
     setActivities((prev) => [newAct, ...prev]);
@@ -501,8 +535,6 @@ function AppContent() {
             onSelectTask={setSelectedTask}
             onApproveTaskStatus={handleApproveTaskStatus}
             onRejectTaskStatus={handleRejectTaskStatus}
-            managedSector={managedSector}
-            onSelectManagedSector={setManagedSector}
           />
         )}
 
@@ -511,7 +543,7 @@ function AppContent() {
           isOpen={isSecurityModalOpen}
           onClose={() => setIsSecurityModalOpen(false)}
           currentRole={activeRole}
-          onSwitchRole={switchActiveRole}
+          onSwitchRole={() => switchActiveRole(activeRole === 'Manager' ? 'Employee' : 'Manager')}
         />
 
         {/* Animated Screen Outlet */}
@@ -533,7 +565,7 @@ function AppContent() {
               {currentScreen === 'Dashboard' && (
                 <DashboardScreen
                   tasks={scopedTasks}
-                  activities={activities}
+                  activities={scopedActivities}
                   team={scopedTeam}
                   locations={scopedLocations}
                   onNavigate={handleNavigate}
@@ -546,7 +578,7 @@ function AppContent() {
                   tasks={scopedTasks}
                   team={scopedTeam}
                   locations={scopedLocations}
-                  timeline={timeline}
+                  timeline={scopedTimeline}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                 />
@@ -554,7 +586,7 @@ function AppContent() {
 
               {currentScreen === 'ProjectTimeline' && (
                 <ProjectTimelineScreen
-                  timeline={timeline}
+                  timeline={scopedTimeline}
                   onNavigate={handleNavigate}
                 />
               )}
@@ -615,7 +647,7 @@ function AppContent() {
                   onNavigate={handleNavigate}
                 >
                   <AsyncReportsScreen
-                    asyncJobs={asyncJobs}
+                    asyncJobs={scopedAsyncJobs}
                     tasks={scopedTasks}
                     attendanceLogs={scopedAttendance}
                     onOpenMobileMenu={() => setIsMobileNavOpen(true)}
@@ -633,6 +665,16 @@ function AppContent() {
                 />
               )}
 
+              {currentScreen === 'TaskBoardActivity' && (
+                <TaskBoardActivityScreen
+                  tasks={scopedTasks}
+                  activities={scopedActivities}
+                  onNavigate={handleNavigate}
+                  onSelectTask={(task) => setSelectedTask(task)}
+                  selectedTaskId={selectedTask?.id}
+                />
+              )}
+
               {currentScreen === 'Settings' && (
                 <SettingsScreen onNavigate={handleNavigate} />
               )}
@@ -644,6 +686,9 @@ function AppContent() {
                   onAddTeamMember={handleAddTeamMember}
                   onUpdateTeamMember={handleUpdateTeamMember}
                   activeRole={activeRole}
+                  userProfile={userProfile}
+                  isTeamManager={userProfile?.isTeamManager}
+                  onRoleToggle={userProfile?.isTeamManager ? () => switchActiveRole(activeRole === 'Manager' ? 'Employee' : 'Manager') : undefined}
                 />
               )}
 

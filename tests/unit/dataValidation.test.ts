@@ -34,7 +34,7 @@ describe('Data Validation & Clean Empty State Integrity', () => {
         title: 'Aquifer Pressure Audit',
         status: 'in_progress',
         priority: 'high',
-        teamSector: 'Hydro-Geology',
+        teamId: 'TEAM-HYDRO',
         assignee: { name: 'Amara Vance', avatar: '', role: 'Lead Hydro-Geologist' },
         dueDate: 'Aug 10, 2026',
         progress: 50,
@@ -47,7 +47,7 @@ describe('Data Validation & Clean Empty State Integrity', () => {
         title: 'Solar Grid Inverter Maintenance',
         status: 'todo',
         priority: 'medium',
-        teamSector: 'Grid Architecture',
+        teamId: 'TEAM-GRID',
         assignee: { name: 'Tariq Al-Mansoor', avatar: '', role: 'Grid Architect' },
         dueDate: 'Aug 12, 2026',
         progress: 0,
@@ -56,7 +56,7 @@ describe('Data Validation & Clean Empty State Integrity', () => {
       },
     ];
 
-    const mockProfile: any = { displayName: 'Amara Vance', teamSector: 'Hydro-Geology' };
+    const mockProfile: any = { displayName: 'Amara Vance', teamId: 'TEAM-HYDRO' };
 
     it('scopes tasks for employee to assigned Hydro-Geology team sector', () => {
       const scoped = scopeTasksByTeam(mockTasks, mockProfile, 'Employee');
@@ -64,13 +64,10 @@ describe('Data Validation & Clean Empty State Integrity', () => {
       expect(scoped[0].id).toBe('T-1');
     });
 
-    it('scopes tasks for manager according to selected managed team sector', () => {
-      const allTasks = scopeTasksByTeam(mockTasks, mockProfile, 'Manager', 'All Teams');
-      expect(allTasks).toHaveLength(2);
-
-      const hydroTasks = scopeTasksByTeam(mockTasks, mockProfile, 'Manager', 'Hydro-Geology');
+    it('scopes tasks for manager according to their assigned team', () => {
+      const hydroTasks = scopeTasksByTeam(mockTasks, mockProfile, 'Manager');
       expect(hydroTasks).toHaveLength(1);
-      expect(hydroTasks[0].teamSector).toBe('Hydro-Geology');
+      expect(hydroTasks[0].teamId).toBe('TEAM-HYDRO');
     });
 
     it('returns empty array when tasks list is empty', () => {

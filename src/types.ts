@@ -24,13 +24,13 @@ export interface UserProfile {
   displayName: string;
   photoURL: string;
   role: string;
-  teamSector?: string;
   specialty?: string;
   phone?: string;
   assignedStation?: string;
   bio?: string;
   updatedAt?: string;
   permissionStatus?: 'pending_review' | 'approved' | 'rejected' | 'elevated';
+  teamId?: string;
   teamName?: string;
   isTeamManager?: boolean;
 }
@@ -70,7 +70,7 @@ export interface Task {
   tags: string[];
   description?: string;
   region?: string;
-  teamSector?: string;
+  teamId?: string;
   location?: { lat: number; lng: number; label: string };
   updatedAt: string;
   timeSpent?: string;
@@ -95,7 +95,7 @@ export interface UserStory {
   assigneeName?: string;
   createdAt: string;
   updatedAt: string;
-  teamSector?: string;
+  teamId?: string;
 }
 
 export interface AttendanceLog {
@@ -115,7 +115,7 @@ export interface AttendanceLog {
   approvalStatus?: 'pending' | 'approved' | 'flagged';
   approvedBy?: string;
   managerNotes?: string;
-  teamSector?: string;
+  teamId?: string;
 }
 
 export interface AsyncJob {
@@ -129,6 +129,7 @@ export interface AsyncJob {
   errorReason?: string;
   createdAt: string;
   completedAt?: string;
+  teamId?: string;
 }
 
 export interface Activity {
@@ -144,6 +145,7 @@ export interface Activity {
   requiresManagerApproval?: boolean;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   pendingStatus?: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+  teamId?: string;
 }
 
 export interface TeamMember {
@@ -158,7 +160,8 @@ export interface TeamMember {
   localTime?: string;
   tasksCount: number;
   performance: number;
-  teamSector?: string;
+  teamId?: string;
+  teamName?: string;
   permissionStatus?: 'pending_review' | 'approved' | 'rejected' | 'elevated';
   requestedRole?: string;
   requestedPermissions?: string[];
@@ -179,6 +182,7 @@ export interface TimelineMilestone {
   assignedMemberIds?: string[];
   description?: string;
   budget?: string;
+  teamId?: string;
 }
 
 export interface TeamInvitation {
@@ -188,6 +192,7 @@ export interface TeamInvitation {
   role: string;
   isManagerInvite: boolean;
   teamName: string;
+  teamId: string;
   invitedBy: string;
   invitedByEmail: string;
   createdAt: string;
@@ -210,4 +215,5 @@ export interface SiteLocation {
   windSpeed?: string;
   uvIndex?: string;
   assignedMemberIds?: string[];
+  teamId?: string;
 }

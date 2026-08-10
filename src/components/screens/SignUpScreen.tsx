@@ -44,7 +44,7 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [fieldRole, setFieldRole] = useState('Hydro-Geologist');
+  const [fieldRole, setFieldRole] = useState('');
   const [teamName, setTeamName] = useState('');
 
   const [isResetMode, setIsResetMode] = useState(false);
@@ -137,8 +137,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
             email.trim(),
             password,
             fullName.trim(),
-            fieldRole || 'Field Technician',
-            teamName.trim() || 'Sahara Primary Sector',
+            fieldRole.trim() || 'Field Technician',
+            teamName.trim() || 'Sahara Primary Team',
             false
           );
         }
@@ -179,7 +179,7 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
       } else if (mode === 'signup') {
         await signInWithGoogle(
           fullName.trim() || undefined,
-          fieldRole || 'Field Technician',
+          fieldRole.trim() || 'Field Technician',
           teamName.trim() || undefined,
           false
         );
@@ -506,17 +506,14 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
               {mode === 'signup' && signupType === 'employee' && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#3D3028] uppercase">Field Specialty</label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={fieldRole}
                     onChange={(e) => setFieldRole(e.target.value)}
-                    className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-3 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
-                  >
-                    <option value="Hydro-Geologist">Hydro-Geologist</option>
-                    <option value="Grid Architect">Grid Architect</option>
-                    <option value="Robotics Engineer">Robotics Engineer</option>
-                    <option value="Ecologist">Ecologist</option>
-                    <option value="SatCom Specialist">SatCom Specialist</option>
-                  </select>
+                    placeholder="e.g. Field Technician"
+                    className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                  />
                 </div>
               )}
 

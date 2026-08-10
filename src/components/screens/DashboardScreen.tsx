@@ -463,7 +463,9 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
           {/* Team Sync Summary Card - matching Team Sync block from design */}
           <div className="bg-[#8B5E3C] rounded-[32px] p-6 text-white shadow-sm space-y-4">
             <h3 className="font-headline text-xl font-normal">Team Sync Room</h3>
-            <p className="text-xs opacity-90 leading-relaxed">Daily Sector 04 standup meeting scheduled for today at 2:00 PM (PT)</p>
+            <p className="text-xs opacity-90 leading-relaxed">
+              Daily {userProfile?.teamName || 'Global'} standup meeting scheduled for today at 2:00 PM (PT)
+            </p>
             <div className="flex items-center justify-between pt-2">
               <button
                 onClick={() => onNavigate('TeamSync', 'none')}
@@ -471,7 +473,9 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
               >
                 Join Room
               </button>
-              <span className="text-xs opacity-75 italic">4 members ready</span>
+              <span className="text-xs opacity-75 italic">
+                {team.filter(m => m.status === 'active' || m.status === 'in_field').length} members ready
+              </span>
             </div>
           </div>
 

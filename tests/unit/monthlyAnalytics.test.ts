@@ -13,16 +13,16 @@ import {
 import { Task, TeamMember, AttendanceLog } from '../../src/types';
 
 const TEST_TEAM: TeamMember[] = [
-  { id: 'TM-1', name: 'Amara Vance', role: 'Lead Hydro-Geologist', avatar: '', email: 'a.vance@sahara.io', status: 'active', currentTask: 'Aquifer Audit', location: 'Al-Kufra Wells', localTime: 'UTC+2', tasksCount: 4, performance: 95, teamSector: 'Hydro-Geology' },
-  { id: 'TM-2', name: 'Tariq Al-Mansoor', role: 'Grid Architect', avatar: '', email: 't.almansoor@sahara.io', status: 'active', currentTask: 'Solar Array 3', location: 'Djanet Solar Farm', localTime: 'UTC+1', tasksCount: 3, performance: 92, teamSector: 'Grid Architecture' },
-  { id: 'TM-3', name: 'Elena Rostova', role: 'Robotics Specialist', avatar: '', email: 'e.rostova@sahara.io', status: 'active', currentTask: 'Sand Shield Wipers', location: 'Tibesti Base', localTime: 'UTC+2', tasksCount: 5, performance: 89, teamSector: 'Field Robotics' },
-  { id: 'TM-4', name: 'Kofi Mensah', role: 'Ecologist', avatar: '', email: 'k.mensah@sahara.io', status: 'active', currentTask: 'Flora Census', location: 'Siwa Field Hub', localTime: 'UTC+2', tasksCount: 2, performance: 98, teamSector: 'Ecology & Environment' },
-  { id: 'TM-5', name: 'Maya Lin', role: 'SatCom Specialist', avatar: '', email: 'm.lin@sahara.io', status: 'active', currentTask: 'Dish Alignment', location: 'Ghadames Relay', localTime: 'UTC+1', tasksCount: 4, performance: 94, teamSector: 'SatCom Telecom' },
+  { id: 'TM-1', name: 'Amara Vance', role: 'Lead Hydro-Geologist', avatar: '', email: 'a.vance@sahara.io', status: 'active', currentTask: 'Aquifer Audit', location: 'Al-Kufra Wells', localTime: 'UTC+2', tasksCount: 4, performance: 95, teamId: 'TEAM-1', teamName: 'Hydro-Geology' },
+  { id: 'TM-2', name: 'Tariq Al-Mansoor', role: 'Grid Architect', avatar: '', email: 't.almansoor@sahara.io', status: 'active', currentTask: 'Solar Array 3', location: 'Djanet Solar Farm', localTime: 'UTC+1', tasksCount: 3, performance: 92, teamId: 'TEAM-2', teamName: 'Grid Architecture' },
+  { id: 'TM-3', name: 'Elena Rostova', role: 'Robotics Specialist', avatar: '', email: 'e.rostova@sahara.io', status: 'active', currentTask: 'Sand Shield Wipers', location: 'Tibesti Base', localTime: 'UTC+2', tasksCount: 5, performance: 89, teamId: 'TEAM-3', teamName: 'Field Robotics' },
+  { id: 'TM-4', name: 'Kofi Mensah', role: 'Ecologist', avatar: '', email: 'k.mensah@sahara.io', status: 'active', currentTask: 'Flora Census', location: 'Siwa Field Hub', localTime: 'UTC+2', tasksCount: 2, performance: 98, teamId: 'TEAM-4', teamName: 'Ecology & Environment' },
+  { id: 'TM-5', name: 'Maya Lin', role: 'SatCom Specialist', avatar: '', email: 'm.lin@sahara.io', status: 'active', currentTask: 'Dish Alignment', location: 'Ghadames Relay', localTime: 'UTC+1', tasksCount: 4, performance: 94, teamId: 'TEAM-5', teamName: 'SatCom Telecom' },
 ];
 
 const TEST_TASKS: Task[] = [
-  { id: 'TASK-1', code: 'SAH-101', title: 'Aquifer Flow Audit', status: 'in_progress', priority: 'high', teamSector: 'Hydro-Geology', assignee: { name: 'Amara Vance', avatar: '', role: 'Hydro-Geologist' }, dueDate: 'Aug 10, 2026', progress: 60, tags: ['Hydrology'], updatedAt: 'Just now' },
-  { id: 'TASK-2', code: 'SAH-102', title: 'Solar Array Optimization', status: 'done', priority: 'urgent', teamSector: 'Grid Architecture', assignee: { name: 'Tariq Al-Mansoor', avatar: '', role: 'Grid Architect' }, dueDate: 'Aug 09, 2026', progress: 100, tags: ['Energy'], updatedAt: 'Just now' },
+  { id: 'TASK-1', code: 'SAH-101', title: 'Aquifer Flow Audit', status: 'in_progress', priority: 'high', teamId: 'TEAM-1', assignee: { name: 'Amara Vance', avatar: '', role: 'Hydro-Geologist' }, dueDate: 'Aug 10, 2026', progress: 60, tags: ['Hydrology'], updatedAt: 'Just now' },
+  { id: 'TASK-2', code: 'SAH-102', title: 'Solar Array Optimization', status: 'done', priority: 'urgent', teamId: 'TEAM-2', assignee: { name: 'Tariq Al-Mansoor', avatar: '', role: 'Grid Architect' }, dueDate: 'Aug 09, 2026', progress: 100, tags: ['Energy'], updatedAt: 'Just now' },
 ];
 
 const TEST_ATTENDANCE: AttendanceLog[] = [

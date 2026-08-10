@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserStory, SiteLocation, Task } from '../../types';
 import { saveStory, saveTask } from '../../services/firestoreService';
+import { useAuth } from '../../context/AuthContext';
 
 interface UserStoriesScreenProps {
   stories: UserStory[];
@@ -17,6 +18,7 @@ export const UserStoriesScreen: React.FC<UserStoriesScreenProps> = ({
   onOpenMobileMenu,
   onNavigate,
 }) => {
+  const { userProfile } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStory, setNewStory] = useState({
@@ -52,6 +54,7 @@ export const UserStoriesScreen: React.FC<UserStoriesScreenProps> = ({
       assigneeName: newStory.assigneeName,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
+      teamId: userProfile?.teamId || '',
     };
 
     await saveStory(created);
@@ -95,7 +98,8 @@ export const UserStoriesScreen: React.FC<UserStoriesScreenProps> = ({
       tags: ['Story Task'],
       storyId: story.id,
       projectId: story.projectId,
-      updatedAt: 'Just now',
+      updatedAt: new Date().toISOString(),
+      teamId: userProfile?.teamId || '',
     };
 
     await saveTask(newTask);

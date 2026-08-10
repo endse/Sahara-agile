@@ -143,11 +143,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const m = d.data() as TeamMember;
               if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
                 assignedRole = m.role || assignedRole;
-                assignedTeam = m.teamSector || assignedTeam;
+                assignedTeam = m.teamName || assignedTeam;
                 if (m.role?.toLowerCase().includes('manager')) {
                   isManagerRole = true;
                 }
                 initialPermission = 'approved';
+              }
+            });
+          } catch (e) {
+            console.warn('Roster check warning:', e);
+          }
+        }
+
+        let teamId = '';
+        if (matchedInvite) {
+          teamId = matchedInvite.teamId || '';
+        } else if (isCreatingTeam) {
+          teamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+        } else {
+          // If neither, try extracting it from roster if we found a match above
+          try {
+            const teamSnap = await getDocs(collection(db, 'team'));
+            teamSnap.forEach((d) => {
+              const m = d.data() as TeamMember;
+              if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
+                if (m.teamId) {
+                  teamId = m.teamId;
+                }
               }
             });
           } catch (e) {
@@ -163,15 +185,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             firebaseUser.photoURL ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
           role: assignedRole,
-          specialty: 'Hydro-Geology & SatCom Systems',
-          assignedStation: 'Al-Kufra Site A',
-          phone: '+218 (91) 402-8819',
-          bio: isManagerRole
-            ? 'Operations Manager directing hydrological sensor arrays and team operations.'
-            : 'Field technician executing dispatch orders across Sector 4.',
+          specialty: '',
+          assignedStation: '',
+          phone: '',
+          bio: '',
           updatedAt: new Date().toISOString(),
           permissionStatus: initialPermission,
           teamName: assignedTeam,
+          teamId: teamId,
           isTeamManager: isManagerRole,
         };
 
@@ -194,7 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localTime: 'UTC+2 (Sahara)',
             tasksCount: 0,
             performance: 92,
-            teamSector: assignedTeam,
+            teamName: assignedTeam,
+            teamId: teamId,
             permissionStatus: initialPermission,
             requestedRole: assignedRole,
           },
@@ -268,9 +290,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const createNewTeam = async (teamName: string, managerTitle: string = 'Operations Manager') => {
     if (!user || !userProfile) return;
     try {
+      const teamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
       const updatedProfile: UserProfile = {
         ...userProfile,
         teamName,
+        teamId,
         role: managerTitle,
         isTeamManager: true,
         permissionStatus: 'approved',
@@ -292,7 +316,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           avatar: userProfile.photoURL,
           status: 'active',
           currentTask: `Leading Team: ${teamName}`,
-          teamSector: teamName,
+          teamName: teamName,
+          teamId: teamId,
           permissionStatus: 'approved',
         },
         { merge: true }

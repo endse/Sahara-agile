@@ -92,12 +92,11 @@ export const SettingsScreen: React.FC<SettingsProps> = ({ onNavigate }) => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#3a302a] uppercase">Primary Field Sector</label>
-                <select className="w-full bg-[#faf5ee] border border-[#d8d0c8] rounded-xl px-4 py-2.5 text-xs font-medium text-[#3a302a] outline-none focus:border-[#c2652a]">
-                  <option>Sector 04 — Al-Kufra Hydro Hub</option>
-                  <option>Sector 02 — Djanet Solar Basin</option>
-                  <option>Sector 01 — Tibesti Highland Base</option>
-                  <option>Sector 05 — Siwa Oasis Preserve</option>
-                </select>
+                <input
+                  type="text"
+                  placeholder="e.g. Sector 04 — Al-Kufra Hydro Hub"
+                  className="w-full bg-[#faf5ee] border border-[#d8d0c8] rounded-xl px-4 py-2.5 text-xs font-medium text-[#3a302a] outline-none focus:border-[#c2652a]"
+                />
               </div>
 
               <div className="space-y-1.5 md:col-span-2">

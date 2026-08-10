@@ -6,14 +6,16 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Task, TaskAttachment, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
 
 // --- TASKS ---
-export const subscribeTasks = (onData: (tasks: Task[]) => void) => {
-  const colRef = collection(db, 'tasks');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeTasks = (teamId: string, onData: (tasks: Task[]) => void) => {
+  const q = query(collection(db, 'tasks'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: Task[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as Task);
@@ -35,9 +37,9 @@ export const updateTaskAttachments = async (taskId: string, attachments: TaskAtt
 };
 
 // --- LOCATIONS (PROJECTS) ---
-export const subscribeLocations = (onData: (locations: SiteLocation[]) => void) => {
-  const colRef = collection(db, 'locations');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeLocations = (teamId: string, onData: (locations: SiteLocation[]) => void) => {
+  const q = query(collection(db, 'locations'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: SiteLocation[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as SiteLocation);
@@ -51,9 +53,9 @@ export const saveLocation = async (location: SiteLocation) => {
 };
 
 // --- ACTIVITIES ---
-export const subscribeActivities = (onData: (activities: Activity[]) => void) => {
-  const colRef = collection(db, 'activities');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeActivities = (teamId: string, onData: (activities: Activity[]) => void) => {
+  const q = query(collection(db, 'activities'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: Activity[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as Activity);
@@ -67,9 +69,9 @@ export const saveActivity = async (activity: Activity) => {
 };
 
 // --- TEAM ---
-export const subscribeTeam = (onData: (team: TeamMember[]) => void) => {
-  const colRef = collection(db, 'team');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeTeam = (teamId: string, onData: (team: TeamMember[]) => void) => {
+  const q = query(collection(db, 'team'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: TeamMember[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as TeamMember);
@@ -83,9 +85,9 @@ export const saveTeamMember = async (member: TeamMember) => {
 };
 
 // --- TIMELINE ---
-export const subscribeTimeline = (onData: (timeline: TimelineMilestone[]) => void) => {
-  const colRef = collection(db, 'timeline');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeTimeline = (teamId: string, onData: (timeline: TimelineMilestone[]) => void) => {
+  const q = query(collection(db, 'timeline'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: TimelineMilestone[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as TimelineMilestone);
@@ -99,9 +101,9 @@ export const saveTimelineMilestone = async (item: TimelineMilestone) => {
 };
 
 // --- USER STORIES ---
-export const subscribeStories = (onData: (stories: UserStory[]) => void) => {
-  const colRef = collection(db, 'stories');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeStories = (teamId: string, onData: (stories: UserStory[]) => void) => {
+  const q = query(collection(db, 'stories'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: UserStory[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as UserStory);
@@ -115,9 +117,9 @@ export const saveStory = async (story: UserStory) => {
 };
 
 // --- ATTENDANCE & WORK LOGS ---
-export const subscribeAttendance = (onData: (logs: AttendanceLog[]) => void) => {
-  const colRef = collection(db, 'attendance');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeAttendance = (teamId: string, onData: (logs: AttendanceLog[]) => void) => {
+  const q = query(collection(db, 'attendance'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: AttendanceLog[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as AttendanceLog);
@@ -131,9 +133,9 @@ export const saveAttendanceLog = async (log: AttendanceLog) => {
 };
 
 // --- ASYNC JOBS ---
-export const subscribeAsyncJobs = (onData: (jobs: AsyncJob[]) => void) => {
-  const colRef = collection(db, 'async_jobs');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeAsyncJobs = (teamId: string, onData: (jobs: AsyncJob[]) => void) => {
+  const q = query(collection(db, 'async_jobs'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: AsyncJob[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as AsyncJob);
@@ -151,9 +153,9 @@ export const saveInvitation = async (invitation: TeamInvitation) => {
   await setDoc(doc(db, 'invitations', invitation.id), invitation, { merge: true });
 };
 
-export const subscribeInvitations = (onData: (invites: TeamInvitation[]) => void) => {
-  const colRef = collection(db, 'invitations');
-  return onSnapshot(colRef, (snapshot) => {
+export const subscribeInvitations = (teamId: string, onData: (invites: TeamInvitation[]) => void) => {
+  const q = query(collection(db, 'invitations'), where('teamId', '==', teamId));
+  return onSnapshot(q, (snapshot) => {
     const list: TeamInvitation[] = [];
     snapshot.forEach((docSnap) => {
       list.push({ id: docSnap.id, ...docSnap.data() } as TeamInvitation);

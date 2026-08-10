@@ -31,8 +31,8 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('2026-09-01');
   const [endDate, setEndDate] = useState('2026-12-31');
-  const [region, setRegion] = useState('Sector 4 - East Oasis');
-  const [lead, setLead] = useState(team[0]?.name || 'Amara Vance');
+  const [region, setRegion] = useState('');
+  const [lead, setLead] = useState(team[0]?.name || '');
   const [status, setStatus] = useState<'planned' | 'active' | 'completed'>('active');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
     team.slice(0, 2).map((m) => m.id)
@@ -164,18 +164,13 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
             <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
               Geographic Region / Sector
             </label>
-            <select
+            <input
+              type="text"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
+              placeholder="e.g. Sector 4 - East Oasis"
               className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none transition-colors"
-            >
-              <option value="Sector 1 - Highland">Sector 1 - Highland (Tibesti Base)</option>
-              <option value="Sector 2 - Central Basin">Sector 2 - Central Basin (Djanet)</option>
-              <option value="Sector 3 - West Relay">Sector 3 - West Relay (Ghadames)</option>
-              <option value="Sector 4 - East Oasis">Sector 4 - East Oasis (Al-Kufra)</option>
-              <option value="Sector 5 - North Border">Sector 5 - North Border (Siwa)</option>
-              <option value="Sector 6 - Southern Plateau">Sector 6 - Southern Plateau</option>
-            </select>
+            />
           </div>
 
           {/* Project Lead */}

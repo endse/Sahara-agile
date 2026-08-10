@@ -5,47 +5,63 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasTeamAccess(teamId) {
+      return isSignedIn() && (getUserData().teamId == teamId || teamId == null);
     }
 
     match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /invitations/{inviteId} {
       allow read: if true;
       allow write: if isSignedIn();
     }
 
     match /tasks/{taskId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /locations/{locationId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /activities/{activityId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /timeline/{timelineId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /team/{teamMemberId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /stories/{storyId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     // Attendance RBAC: Employees can log their own hours; Managers have global write access
     match /attendance/{attendanceId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
 
     match /async_jobs/{jobId} {
-      allow read, write: if true;
+      allow read, update, delete: if hasTeamAccess(resource.data.teamId);
+      allow create: if hasTeamAccess(request.resource.data.teamId);
     }
   }
 }

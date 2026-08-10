@@ -241,18 +241,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[#3D3028] uppercase">Primary Role / Title</label>
-              <select
+              <input
+                type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-[#FDF8F3] border border-[#E5D5C0] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#3D3028] focus:outline-none focus:border-[#D4A373]"
-              >
-                <option>Lead Hydro-Geologist</option>
-                <option>Solar Microgrid Architect</option>
-                <option>Robotics Engineer</option>
-                <option>Field Operations Specialist</option>
-                <option>SatCom Telemetry Lead</option>
-                <option>Oasis Dispatcher</option>
-              </select>
+                placeholder="e.g. Lead Hydro-Geologist"
+                className="w-full bg-[#FDF8F3] border border-[#E5D5C0] rounded-xl px-4 py-2.5 text-xs font-semibold text-[#3D3028] focus:outline-none focus:border-[#D4A373]"
+              />
             </div>
 
             <div className="space-y-1.5">

@@ -8,6 +8,7 @@ interface TeamSyncProps {
   onAddTeamMember?: (newMember: TeamMember) => Promise<void>;
   onUpdateTeamMember?: (updatedMember: TeamMember) => Promise<void>;
   activeRole?: 'Manager' | 'Employee';
+  userProfile: any; // We'll just use any here or import UserProfile
 }
 
 export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
@@ -16,6 +17,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
   onAddTeamMember,
   onUpdateTeamMember,
   activeRole = 'Manager',
+  userProfile,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchMember, setSearchMember] = useState<string>('');
@@ -33,12 +35,10 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
   } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Add Member Form state
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('Field Technician');
-  const [newMemberSector, setNewMemberSector] = useState('Hydro-Geology');
-  const [newMemberLocation, setNewMemberLocation] = useState('Al-Kufra Site A');
+  const [newMemberRole, setNewMemberRole] = useState('');
+  const [newMemberLocation, setNewMemberLocation] = useState('');
   const [newMemberInitialStatus, setNewMemberInitialStatus] = useState<'active' | 'in_field' | 'busy' | 'offline'>('active');
   const [newMemberPermissionStatus, setNewMemberPermissionStatus] = useState<'pending_review' | 'approved'>('approved');
 
@@ -53,7 +53,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       member.name.toLowerCase().includes(searchMember.toLowerCase()) ||
       member.role.toLowerCase().includes(searchMember.toLowerCase()) ||
       member.location?.toLowerCase().includes(searchMember.toLowerCase()) ||
-      member.teamSector?.toLowerCase().includes(searchMember.toLowerCase());
+      member.teamName?.toLowerCase().includes(searchMember.toLowerCase());
     return matchesStatus && matchesQuery;
   });
 
@@ -83,7 +83,8 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       localTime: 'UTC+2 (Sahara)',
       tasksCount: 0,
       performance: 95,
-      teamSector: newMemberSector,
+      teamName: userProfile?.teamName || 'Sahara Team',
+      teamId: userProfile?.teamId || '',
       permissionStatus: newMemberPermissionStatus,
       requestedRole: newMemberRole,
       reviewedBy: activeRole === 'Manager' ? 'Operations Manager' : undefined,
@@ -103,7 +104,8 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
       fullName: newMemberName.trim(),
       role: newMemberRole,
       isManagerInvite: isManagerRole,
-      teamName: newMemberSector || 'Sahara Primary Sector',
+      teamName: userProfile?.teamName || 'Sahara Team',
+      teamId: userProfile?.teamId || '',
       invitedBy: 'Operations Manager',
       invitedByEmail: 'manager@sahara-agile.org',
       createdAt: new Date().toISOString(),
@@ -241,7 +243,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
             type="text"
             value={searchMember}
             onChange={(e) => setSearchMember(e.target.value)}
-            placeholder="Search by name, role, station, or sector..."
+            placeholder="Search by name, role, station..."
             className="w-full bg-[#faf5ee] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-[#3a302a] outline-none"
           />
         </div>
@@ -352,8 +354,8 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                       <span className="font-semibold text-[#3a302a]">{member.location || 'Site A'}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[#78706a]">Sector:</span>
-                      <span className="font-bold text-[#c2652a]">{member.teamSector || 'Hydro-Geology'}</span>
+                      <span className="text-[#78706a]">Team:</span>
+                      <span className="font-bold text-[#c2652a]">{member.teamName || 'Sahara Team'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[#78706a]">Account Status:</span>
@@ -393,8 +395,8 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
 
               <div className="space-y-3 text-xs text-[#605850]">
                 <div className="p-3 bg-[#faf5ee] rounded-xl border border-[#e6e0d6] space-y-1">
-                  <span className="text-[10px] font-bold text-[#78706a] uppercase">Stationed Location & Sector</span>
-                  <p className="text-sm font-bold text-[#3a302a]">{selectedMember.location} — {selectedMember.teamSector}</p>
+                  <span className="text-[10px] font-bold text-[#78706a] uppercase">Stationed Location & Team</span>
+                  <p className="text-sm font-bold text-[#3a302a]">{selectedMember.location} — {selectedMember.teamName}</p>
                 </div>
 
                 <div className="p-3 bg-[#faf5ee] rounded-xl border border-[#e6e0d6] space-y-1">
@@ -530,34 +532,14 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#3a302a] mb-1">Field Role</label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={newMemberRole}
                     onChange={(e) => setNewMemberRole(e.target.value)}
+                    placeholder="e.g. Field Technician"
                     className="w-full bg-[#f2ece4] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl px-3 py-2.5 text-xs text-[#3a302a] outline-none font-medium"
-                  >
-                    <option value="Field Operations Specialist">Field Operations Specialist</option>
-                    <option value="Hydrological Engineer">Hydrological Engineer</option>
-                    <option value="Solar Photovoltaic Tech">Solar Photovoltaic Tech</option>
-                    <option value="SatCom Systems Lead">SatCom Systems Lead</option>
-                    <option value="Robotics Drone Operator">Robotics Drone Operator</option>
-                    <option value="Environmental Ecologist">Environmental Ecologist</option>
-                    <option value="Operations Manager">Operations Manager</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#3a302a] mb-1">Team Sector</label>
-                  <select
-                    value={newMemberSector}
-                    onChange={(e) => setNewMemberSector(e.target.value)}
-                    className="w-full bg-[#f2ece4] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl px-3 py-2.5 text-xs text-[#3a302a] outline-none font-medium"
-                  >
-                    <option value="Hydro-Geology">Hydro-Geology</option>
-                    <option value="Solar Grid">Solar Grid</option>
-                    <option value="SatCom Arrays">SatCom Arrays</option>
-                    <option value="Robotics & Drones">Robotics & Drones</option>
-                    <option value="Ecology">Ecology</option>
-                  </select>
+                  />
                 </div>
               </div>
 
@@ -621,7 +603,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                     Manager Account & Permission Reviews
                   </h3>
                   <p className="text-xs text-[#78706a]">
-                    Review registration credentials, grant role elevations, and accept sector access
+                    Review registration credentials and grant role elevations
                   </p>
                 </div>
               </div>
@@ -667,7 +649,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                           </span>
                         </div>
                         <p className="text-xs text-[#78706a]">
-                          {m.role} • {m.teamSector || 'Hydro-Geology'} Sector
+                          {m.role} • {m.teamName || 'Sahara Team'}
                         </p>
                         <p className="text-[11px] font-mono text-[#c2652a]">{m.email}</p>
                       </div>

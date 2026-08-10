@@ -12,16 +12,26 @@ interface SidebarProps {
 export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNavigate, isOpenMobile, onCloseMobile }) => {
   const { user, userProfile, activeRole, switchActiveRole, signOutUser } = useAuth();
 
-  const navItems = [
-    { id: 'Dashboard' as ScreenId, label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
-    { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics', icon: 'insights', isManagerOnly: false },
-    { id: 'TaskBoard' as ScreenId, label: 'Tasks', icon: 'view_kanban', isManagerOnly: false },
-    { id: 'UserStories' as ScreenId, label: 'Stories', icon: 'auto_stories', isManagerOnly: true },
-    { id: 'ProjectTimeline' as ScreenId, label: 'Timeline', icon: 'timeline', isManagerOnly: false },
-    { id: 'ProjectMap' as ScreenId, label: 'Map', icon: 'map', isManagerOnly: false },
-    { id: 'TeamSync' as ScreenId, label: 'Team', icon: 'groups', isManagerOnly: false },
-    { id: 'AttendanceLog' as ScreenId, label: 'Attendance', icon: 'schedule', isManagerOnly: false },
-    { id: 'AsyncReports' as ScreenId, label: 'Reports', icon: 'memory', isManagerOnly: true },
+  const navGroups = [
+    {
+      title: 'PRIMARY',
+      items: [
+        { id: 'Dashboard' as ScreenId, label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
+        { id: 'TaskBoard' as ScreenId, label: 'Tasks', icon: 'view_kanban', isManagerOnly: false },
+        { id: 'ProjectTimeline' as ScreenId, label: 'Timeline', icon: 'timeline', isManagerOnly: false },
+        { id: 'ProjectMap' as ScreenId, label: 'Map', icon: 'map', isManagerOnly: false },
+      ]
+    },
+    {
+      title: 'MANAGEMENT',
+      items: [
+        { id: 'TeamSync' as ScreenId, label: 'Team', icon: 'groups', isManagerOnly: false },
+        { id: 'AttendanceLog' as ScreenId, label: 'Attendance', icon: 'schedule', isManagerOnly: false },
+        { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics', icon: 'insights', isManagerOnly: false },
+        { id: 'UserStories' as ScreenId, label: 'Stories', icon: 'auto_stories', isManagerOnly: true },
+        { id: 'AsyncReports' as ScreenId, label: 'Reports', icon: 'memory', isManagerOnly: true },
+      ]
+    }
   ];
 
   const handleNavClick = (screen: ScreenId) => {
@@ -114,45 +124,52 @@ export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNav
         </div>
 
         {/* Main Navigation */}
-        <nav aria-label="Sidebar Navigation" className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto custom-scrollbar">
-          {navItems.map((item) => {
-            const isActive = currentScreen === item.id || (item.id === 'TaskBoard' && currentScreen === 'TaskBoardActivity');
-            const isLockedForEmployee = activeRole === 'Employee' && item.isManagerOnly;
+        <nav aria-label="Sidebar Navigation" className="flex-1 px-4 py-2 space-y-6 overflow-y-auto custom-scrollbar">
+          {navGroups.map((group) => (
+            <div key={group.title} className="space-y-1.5">
+              <h3 className="px-4 text-[10px] font-bold text-[#8B5E3C] uppercase tracking-wider mb-2">
+                {group.title}
+              </h3>
+              {group.items.map((item) => {
+                const isActive = currentScreen === item.id || (item.id === 'TaskBoard' && currentScreen === 'TaskBoardActivity');
+                const isLockedForEmployee = activeRole === 'Employee' && item.isManagerOnly;
 
-            return (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleNavClick(item.id);
-                }}
-                className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-[#D4A373] text-white shadow-sm font-medium'
-                    : isLockedForEmployee
-                    ? 'text-[#8B5E3C]/70 hover:bg-[#E5D5C0]/60'
-                    : 'text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028]'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`material-symbols-outlined text-xl ${isActive ? 'fill' : ''}`}>{item.icon}</span>
-                  <span className="truncate">{item.label}</span>
-                </div>
-                {item.isManagerOnly && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : activeRole === 'Manager'
-                      ? 'bg-[#606C38]/15 text-[#606C38]'
-                      : 'bg-amber-200 text-amber-900'
-                  }`}>
-                    {activeRole === 'Manager' ? 'Mgr' : '🔒 Mgr'}
-                  </span>
-                )}
-              </a>
-            );
-          })}
+                return (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavClick(item.id);
+                    }}
+                    className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[#D4A373] text-white shadow-sm font-medium'
+                        : isLockedForEmployee
+                        ? 'text-[#8B5E3C]/70 hover:bg-[#E5D5C0]/60'
+                        : 'text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`material-symbols-outlined text-xl ${isActive ? 'fill' : ''}`}>{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.isManagerOnly && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : activeRole === 'Manager'
+                          ? 'bg-[#606C38]/15 text-[#606C38]'
+                          : 'bg-amber-200 text-amber-900'
+                      }`}>
+                        {activeRole === 'Manager' ? 'Mgr' : '🔒 Mgr'}
+                      </span>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Secondary Links & Profile */}
