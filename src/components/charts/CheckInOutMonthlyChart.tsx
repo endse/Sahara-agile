@@ -16,13 +16,7 @@ interface CheckInOutMonthlyChartProps {
 type SortOption = 'day_asc' | 'hours_desc' | 'overtime_desc' | 'late_first';
 type FilterOption = 'all' | 'on_time' | 'overtime' | 'late' | 'active';
 
-const EMPLOYEES_ROSTER = [
-  { name: 'Amara Vance', role: 'Lead Hydro-Geologist', color: '#606C38' },
-  { name: 'Tariq Al-Mansoor', role: 'Grid Architect', color: '#D4A373' },
-  { name: 'Elena Rostova', role: 'Robotics Lead', color: '#2A9D8F' },
-  { name: 'Kofi Mensah', role: 'Ecologist', color: '#E76F51' },
-  { name: 'Maya Lin', role: 'SatCom Lead', color: '#3D3028' },
-];
+const TEAM_COLORS = ['#606C38', '#D4A373', '#2A9D8F', '#E76F51', '#3D3028', '#A8793A'];
 
 export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
   data,
@@ -34,6 +28,22 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
   attendanceLogs = [],
   team = [],
 }) => {
+  const dynamicRoster = useMemo(() => {
+    if (team && team.length > 0) {
+      return team.map((t, idx) => ({
+        name: t.name,
+        role: t.role || 'Team Member',
+        color: TEAM_COLORS[idx % TEAM_COLORS.length],
+      }));
+    }
+    return [
+      { name: 'Amara Vance', role: 'Full Stack Developer', color: '#606C38' },
+      { name: 'Tariq Al-Mansoor', role: 'AI/ML Engineer', color: '#D4A373' },
+      { name: 'Elena Rostova', role: 'DevOps Engineer', color: '#2A9D8F' },
+      { name: 'Kofi Mensah', role: 'Cybersecurity Engineer', color: '#E76F51' },
+      { name: 'Maya Lin', role: 'Backend Developer', color: '#3D3028' },
+    ];
+  }, [team]);
   const [hoveredDayData, setHoveredDayData] = useState<DailyCheckInOutData | null>(null);
   const [hoveredTeamDayData, setHoveredTeamDayData] = useState<AllEmployeesDayCheckInOutData | null>(null);
 
@@ -146,8 +156,8 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
               onChange={(e) => onSelectEmployee(e.target.value)}
               className="bg-[#FDF8F3] border border-[#E5D5C0] text-xs font-bold rounded-xl px-3 py-2 text-[#3D3028] outline-none focus:ring-2 focus:ring-[#D4A373]"
             >
-              <option value="all">👥 All 5 Field Personnel (Combined View)</option>
-              {EMPLOYEES_ROSTER.map((emp) => (
+              <option value="all">👥 All Team Members (Combined View)</option>
+              {dynamicRoster.map((emp) => (
                 <option key={emp.name} value={emp.name}>
                   👤 {emp.name} ({emp.role})
                 </option>
@@ -199,7 +209,7 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
         <div className="bg-[#FDF8F3] border border-[#E5D5C0] p-3 rounded-2xl">
           <span className="text-[10px] uppercase font-bold text-[#8B5E3C] block">View Scope</span>
           <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mt-1">
-            {isAllMode ? '👥 5 Personnel Combined' : `👤 ${selectedEmployee}`}
+            {isAllMode ? `👥 ${dynamicRoster.length} Members Combined` : `👤 ${selectedEmployee}`}
           </span>
         </div>
       </div>
@@ -207,8 +217,8 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
       {/* Employee Roster Legend in Combined Mode */}
       {isAllMode && (
         <div className="flex flex-wrap items-center gap-3 bg-[#FDF8F3] p-2.5 rounded-2xl border border-[#E5D5C0] text-[10px] font-bold text-[#3D3028]">
-          <span className="uppercase text-[#8B5E3C]">Field Personnel Roster:</span>
-          {EMPLOYEES_ROSTER.map((emp) => (
+          <span className="uppercase text-[#8B5E3C]">Engineering Team Roster:</span>
+          {dynamicRoster.map((emp) => (
             <button
               key={emp.name}
               onClick={() => onSelectEmployee && onSelectEmployee(emp.name)}
@@ -304,7 +314,7 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
                     const yIn = getYForHour(empShift.clockInHourDecimal);
                     const yOut = getYForHour(empShift.clockOutHourDecimal > 0 ? empShift.clockOutHourDecimal : empShift.clockInHourDecimal + 8);
                     const barHeight = Math.max(10, yIn - yOut);
-                    const empColor = EMPLOYEES_ROSTER[empIdx % EMPLOYEES_ROSTER.length].color;
+                    const empColor = dynamicRoster[empIdx % dynamicRoster.length]?.color || TEAM_COLORS[empIdx % TEAM_COLORS.length];
 
                     return (
                       <g key={empShift.employeeName}>
@@ -452,7 +462,7 @@ export const CheckInOutMonthlyChart: React.FC<CheckInOutMonthlyChartProps> = ({
               {hoveredTeamDayData.employeeShifts.map((s, idx) => (
                 <div key={s.employeeName} className="flex items-center justify-between bg-white/10 p-1.5 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EMPLOYEES_ROSTER[idx % 5].color }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dynamicRoster[idx % dynamicRoster.length]?.color || TEAM_COLORS[idx % TEAM_COLORS.length] }} />
                     <span className="font-bold">{s.employeeName.split(' ')[0]}</span>
                   </div>
                   <div className="text-right font-mono">

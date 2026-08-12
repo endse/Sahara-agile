@@ -1,6 +1,7 @@
 export type ScreenId =
   | 'Landing'
   | 'Dashboard'
+  | 'Projects'
   | 'GlobalSearch'
   | 'ProjectTimeline'
   | 'TaskBoard'
@@ -217,3 +218,15 @@ export interface SiteLocation {
   assignedMemberIds?: string[];
   teamId?: string;
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  type: 'task_assigned' | 'task_created' | 'story_created' | 'project_created' | 'status_changed';
+  targetScreen?: ScreenId;
+  targetId?: string;
+}
+

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenId } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,262 +7,246 @@ interface SidebarProps {
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  onOpenWalkthrough?: () => void;
 }
 
-export const SidebarNavigation: React.FC<SidebarProps> = ({ currentScreen, onNavigate, isOpenMobile, onCloseMobile }) => {
-  const { user, userProfile, activeRole, switchActiveRole, signOutUser } = useAuth();
+type GroupId = 'WORKSPACE' | 'INSIGHTS' | 'TEAM' | 'SYSTEM';
 
-  const navGroups = [
+interface NavItem {
+  id: ScreenId;
+  label: string;
+  icon: string;
+  isManagerOnly?: boolean;
+}
+
+interface NavGroup {
+  id: GroupId;
+  label: string;
+  items: NavItem[];
+}
+
+export const SidebarNavigation: React.FC<SidebarProps> = ({
+  currentScreen,
+  onNavigate,
+  isOpenMobile,
+  onCloseMobile,
+}) => {
+  const { userProfile, activeRole } = useAuth();
+
+  const navGroups: NavGroup[] = [
     {
-      title: 'PRIMARY',
+      id: 'WORKSPACE',
+      label: 'WORKSPACE',
       items: [
-        { id: 'Dashboard' as ScreenId, label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
-        { id: 'TaskBoard' as ScreenId, label: 'Tasks', icon: 'view_kanban', isManagerOnly: false },
-        { id: 'ProjectTimeline' as ScreenId, label: 'Timeline', icon: 'timeline', isManagerOnly: false },
-        { id: 'ProjectMap' as ScreenId, label: 'Map', icon: 'map', isManagerOnly: false },
-      ]
+        { id: 'Dashboard', label: 'Dashboard', icon: 'dashboard', isManagerOnly: false },
+        { id: 'Projects', label: 'Projects', icon: 'folder_open', isManagerOnly: false },
+        { id: 'ProjectMap', label: 'Project Map', icon: 'map', isManagerOnly: false },
+        { id: 'UserStories', label: 'User Stories', icon: 'auto_stories', isManagerOnly: true },
+        { id: 'TaskBoardActivity', label: 'Tasks', icon: 'task', isManagerOnly: false },
+        { id: 'TaskBoard', label: 'Task Board', icon: 'view_kanban', isManagerOnly: false },
+      ],
     },
     {
-      title: 'MANAGEMENT',
+      id: 'INSIGHTS',
+      label: 'INSIGHTS',
       items: [
-        { id: 'TeamSync' as ScreenId, label: 'Team', icon: 'groups', isManagerOnly: false },
-        { id: 'AttendanceLog' as ScreenId, label: 'Attendance', icon: 'schedule', isManagerOnly: false },
-        { id: 'PerformanceAnalytics' as ScreenId, label: 'Analytics', icon: 'insights', isManagerOnly: false },
-        { id: 'UserStories' as ScreenId, label: 'Stories', icon: 'auto_stories', isManagerOnly: true },
-        { id: 'AsyncReports' as ScreenId, label: 'Reports', icon: 'memory', isManagerOnly: true },
-      ]
-    }
+        { id: 'PerformanceAnalytics', label: 'Analytics', icon: 'insights', isManagerOnly: false },
+        { id: 'ProjectTimeline', label: 'Timeline', icon: 'timeline', isManagerOnly: false },
+        { id: 'AsyncReports', label: 'Async Reports', icon: 'memory', isManagerOnly: true },
+      ],
+    },
+    {
+      id: 'TEAM',
+      label: 'TEAM',
+      items: [
+        { id: 'TeamSync', label: 'Team', icon: 'groups', isManagerOnly: false },
+        { id: 'AttendanceLog', label: 'Attendance Log', icon: 'schedule', isManagerOnly: false },
+      ],
+    },
+    {
+      id: 'SYSTEM',
+      label: 'SYSTEM',
+      items: [
+        { id: 'Settings', label: 'Settings', icon: 'settings', isManagerOnly: false },
+      ],
+    },
   ];
+
+  // Helper to determine which group owns the given screen
+  const getGroupForScreen = (screen: ScreenId): GroupId => {
+    for (const group of navGroups) {
+      if (group.items.some((item) => item.id === screen)) {
+        return group.id;
+      }
+    }
+    return 'WORKSPACE';
+  };
+
+  // State: Only 1 group open at a time
+  const [openGroup, setOpenGroup] = useState<GroupId>(() => getGroupForScreen(currentScreen));
+
+  // Automatically open group if currentScreen changes
+  useEffect(() => {
+    const parentGroup = getGroupForScreen(currentScreen);
+    setOpenGroup(parentGroup);
+  }, [currentScreen]);
+
+  const toggleGroup = (groupId: GroupId) => {
+    setOpenGroup((prev) => (prev === groupId ? groupId : groupId));
+  };
 
   const handleNavClick = (screen: ScreenId) => {
     onNavigate(screen, 'none');
     if (onCloseMobile) onCloseMobile();
   };
 
+  const handleBrandClick = () => {
+    onNavigate('Dashboard', 'none');
+    if (onCloseMobile) onCloseMobile();
+  };
+
   return (
     <aside
-      className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[#F3E9DC] border-r border-[#E5D5C0] flex flex-col justify-between transition-transform duration-300 ${
+      className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[#171613] border-r border-[#302B24] flex flex-col justify-between transition-transform duration-300 ${
         isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}
     >
       <div className="flex flex-col h-full">
-        {/* Brand Header & Role Switcher Banner */}
-        <div className="p-6 border-b border-[#E5D5C0] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#8B5E3C] text-[#FDF8F3] flex items-center justify-center font-headline text-xl font-bold shadow-sm">
-                S
-              </div>
-              <div>
-                <h1 className="font-headline text-2xl font-semibold text-[#3D3028] leading-none tracking-tight">Sahara</h1>
-                <span className="text-[10px] tracking-widest font-semibold uppercase text-[#8B5E3C]">Workspace</span>
-              </div>
+        {/* Clickable Sahara Brand Header */}
+        <div
+          onClick={handleBrandClick}
+          className="p-5 border-b border-[#302B24] flex items-center justify-between cursor-pointer hover:bg-[#24211C] transition-colors group select-none"
+          title="Sahara Agile Works — Go to Dashboard"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#C49A5A] text-[#0D0D0B] flex items-center justify-center font-bold text-lg shadow-xs group-hover:scale-105 transition-transform">
+              S
             </div>
-            {onCloseMobile && (
-              <button
-                onClick={onCloseMobile}
-                className="lg:hidden text-[#5C4D42] hover:text-[#3D3028] p-1 rounded-lg hover:bg-[#E5D5C0]"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            )}
-          </div>
-
-          {/* Active Role Indicator Card (Read-Only Security) */}
-          <div className={`p-2.5 rounded-2xl border flex items-center justify-between text-xs ${
-            activeRole === 'Manager'
-              ? 'bg-[#606C38]/10 border-[#606C38]/30 text-[#4d572d]'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-900'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">
-                {activeRole === 'Manager' ? 'admin_panel_settings' : 'badge'}
+            <div>
+              <h1 className="font-bold text-base text-[#F7F3EA] leading-tight tracking-tight group-hover:text-[#C49A5A] transition-colors">
+                Sahara
+              </h1>
+              <span className="text-[10px] tracking-widest font-semibold uppercase text-[#C49A5A]">
+                AGILE WORKSPACE
               </span>
-              <div>
-                <span className="font-bold block leading-tight">
-                  {activeRole === 'Manager' ? 'Manager Credentials' : 'Employee Access'}
-                </span>
-                <span className="text-[10px] opacity-80">
-                  {activeRole === 'Manager' ? 'Full Oversight' : 'Restricted Role'}
-                </span>
-              </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/70 text-[#3D3028] border shrink-0">
-              Verified
-            </span>
           </div>
+          {onCloseMobile && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseMobile();
+              }}
+              className="lg:hidden text-[#8A8378] hover:text-[#F7F3EA] p-1 rounded-lg hover:bg-[#24211C]"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+          )}
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Quick Action CTA */}
         <div className="p-4 space-y-2">
           <button
             onClick={() => onNavigate('NewTask', 'slide_up')}
-            className="w-full bg-[#606C38] hover:bg-[#4d572d] active:scale-[0.98] text-white font-medium py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all text-sm"
+            className="w-full bg-[#C49A5A] hover:bg-[#A8793A] active:scale-[0.98] text-[#0D0D0B] font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-xs"
           >
-            <span className="material-symbols-outlined text-lg">add_task</span>
-            <span>New Task</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('NewProject', 'slide_up')}
-            className={`w-full font-medium py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition-all text-sm relative ${
-              activeRole === 'Manager'
-                ? 'bg-[#FDF8F3] hover:bg-white text-[#3D3028] border border-[#E5D5C0]'
-                : 'bg-stone-200/60 text-stone-500 border border-stone-300 cursor-pointer'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg text-[#D4A373]">
-              {activeRole === 'Manager' ? 'add_location_alt' : 'lock'}
-            </span>
-            <span>New Project</span>
-            {activeRole !== 'Manager' && (
-              <span className="bg-amber-200 text-amber-900 font-bold text-[9px] px-1.5 py-0.5 rounded uppercase">
-                Manager
-              </span>
-            )}
+            <span className="material-symbols-outlined text-base">add</span>
+            <span>+ New Task</span>
           </button>
         </div>
 
-        {/* Main Navigation */}
-        <nav aria-label="Sidebar Navigation" className="flex-1 px-4 py-2 space-y-6 overflow-y-auto custom-scrollbar">
-          {navGroups.map((group) => (
-            <div key={group.title} className="space-y-1.5">
-              <h3 className="px-4 text-[10px] font-bold text-[#8B5E3C] uppercase tracking-wider mb-2">
-                {group.title}
-              </h3>
-              {group.items.map((item) => {
-                const isActive = currentScreen === item.id || (item.id === 'TaskBoard' && currentScreen === 'TaskBoardActivity');
-                const isLockedForEmployee = activeRole === 'Employee' && item.isManagerOnly;
+        {/* Navigation Content Accordion */}
+        <nav aria-label="Sidebar Navigation" className="flex-1 px-3 py-2 space-y-3 overflow-y-auto custom-scrollbar">
+          {navGroups.map((group) => {
+            const isExpanded = openGroup === group.id;
+            const containsActive = group.items.some((item) => item.id === currentScreen);
 
-                return (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavClick(item.id);
-                    }}
-                    className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-[#D4A373] text-white shadow-sm font-medium'
-                        : isLockedForEmployee
-                        ? 'text-[#8B5E3C]/70 hover:bg-[#E5D5C0]/60'
-                        : 'text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`material-symbols-outlined text-xl ${isActive ? 'fill' : ''}`}>{item.icon}</span>
-                      <span className="truncate">{item.label}</span>
-                    </div>
-                    {item.isManagerOnly && (
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : activeRole === 'Manager'
-                          ? 'bg-[#606C38]/15 text-[#606C38]'
-                          : 'bg-amber-200 text-amber-900'
-                      }`}>
-                        {activeRole === 'Manager' ? 'Mgr' : '🔒 Mgr'}
-                      </span>
-                    )}
-                  </a>
-                );
-              })}
-            </div>
-          ))}
+            return (
+              <div key={group.id} className="space-y-1">
+                {/* Accordion Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={`w-full px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center justify-between transition-colors ${
+                    containsActive
+                      ? 'text-[#C49A5A] bg-[#24211C]/40'
+                      : 'text-[#8A8378] hover:text-[#F7F3EA] hover:bg-[#24211C]/60'
+                  }`}
+                >
+                  <span className="truncate">{group.label}</span>
+                  <span className="material-symbols-outlined text-sm transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+                    chevron_right
+                  </span>
+                </button>
+
+                {/* Accordion Child Navigation Items */}
+                {isExpanded && (
+                  <div className="pl-1 space-y-1 transition-all">
+                    {group.items.map((item) => {
+                      const isActive = currentScreen === item.id;
+                      const isLockedForEmployee = activeRole === 'Employee' && item.isManagerOnly;
+
+                      return (
+                        <a
+                          key={item.id}
+                          href={`#${item.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleNavClick(item.id);
+                          }}
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                            isActive
+                              ? 'bg-[#C49A5A]/15 text-[#C49A5A] font-bold border border-[#C49A5A]/30 shadow-2xs'
+                              : isLockedForEmployee
+                              ? 'text-[#8A8378]/60 hover:bg-[#24211C]'
+                              : 'text-[#8A8378] hover:bg-[#24211C] hover:text-[#F7F3EA]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`material-symbols-outlined text-base ${
+                                isActive ? 'text-[#C49A5A] fill' : 'text-[#8A8378]'
+                              }`}
+                            >
+                              {item.icon}
+                            </span>
+                            <span className="truncate">{item.label}</span>
+                          </div>
+
+                          {item.isManagerOnly && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
+                                isActive
+                                  ? 'bg-[#C49A5A]/30 text-[#D6B77A]'
+                                  : activeRole === 'Manager'
+                                  ? 'bg-[#24211C] text-[#8A8378]'
+                                  : 'bg-[#C49A5A]/20 text-[#D6B77A]'
+                              }`}
+                            >
+                              {activeRole === 'Manager' ? 'Manager' : '🔒 Manager'}
+                            </span>
+                          )}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
-        {/* Secondary Links & Profile */}
-        <div className="p-4 border-t border-[#E5D5C0] space-y-1.5">
-
-          <button
-            onClick={() => onNavigate('Profile', 'none')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${
-              currentScreen === 'Profile'
-                ? 'bg-[#D4A373] text-white font-medium'
-                : 'text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028]'
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">account_circle</span>
-            <span>Operator Profile</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('GlobalSearch', 'slide_up')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-colors text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028] ${
-              currentScreen === 'GlobalSearch' ? 'bg-[#E5D5C0] text-[#3D3028]' : ''
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">search</span>
-            <span>Global Search</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate('Settings', 'none')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-colors text-[#5C4D42] hover:bg-[#E5D5C0] hover:text-[#3D3028] ${
-              currentScreen === 'Settings' ? 'bg-[#D4A373] text-white font-medium' : ''
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">settings</span>
-            <span>Settings</span>
-          </button>
-
-          {!user && (
-            <button
-              onClick={() => onNavigate('SignUp', 'slide_up')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-[#8B5E3C] hover:bg-[#E5D5C0] hover:text-[#3D3028] transition-colors"
-            >
-              <span className="material-symbols-outlined text-xl">login</span>
-              <span>Account / Sign In</span>
-            </button>
-          )}
-        </div>
-
-        {/* Dynamic User Footer Profile */}
-        <div className="p-4 bg-[#E5D5C0]/50 border-t border-[#E5D5C0] flex items-center justify-between">
-          <button
-            onClick={() => onNavigate('Profile', 'none')}
-            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity flex-1 min-w-0"
-            title="Open Dynamic Profile"
-          >
-            <img
-              src={
-                userProfile?.photoURL ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-              }
-              alt={userProfile?.displayName || 'User Avatar'}
-              className="w-9 h-9 rounded-full object-cover border-2 border-[#D4A373] shrink-0"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-[#3D3028] leading-tight truncate">
-                {userProfile?.displayName || user?.email || 'Guest Operator'}
-              </p>
-              <p className="text-[11px] text-[#8B5E3C] truncate">
-                {userProfile?.role || 'Field Operations'}
-              </p>
-            </div>
-          </button>
-
-          {user ? (
-            <button
-              onClick={async () => {
-                await signOutUser();
-                onNavigate('Landing', 'push_back');
-              }}
-              className="text-[#8B5E3C] hover:text-[#BC4749] p-1.5 transition-colors shrink-0"
-              title="Sign Out"
-            >
-              <span className="material-symbols-outlined text-lg">logout</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => onNavigate('SignUp', 'slide_up')}
-              className="text-[#D4A373] hover:text-[#3D3028] p-1.5 transition-colors shrink-0"
-              title="Sign In"
-            >
-              <span className="material-symbols-outlined text-lg">login</span>
-            </button>
-          )}
+        {/* Verified Role Footer Badge */}
+        <div className="p-3 bg-[#24211C] border-t border-[#302B24] flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs">
+            <span className={`w-2 h-2 rounded-full ${activeRole === 'Manager' ? 'bg-[#C49A5A]' : 'bg-[#D6B77A]'}`} />
+            <span className="font-semibold text-[#F7F3EA] text-[11px]">
+              {userProfile?.role || activeRole}
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-[#C49A5A] uppercase tracking-wider">
+            {activeRole}
+          </span>
         </div>
       </div>
     </aside>

@@ -123,13 +123,13 @@ describe('Business Logic & Domain Operations', () => {
 
   describe('filterAndSortTasks', () => {
     const tasks: Partial<Task>[] = [
-      { id: '1', code: 'SAH-101', title: 'Pressure transducer calibration', status: 'in_progress', priority: 'urgent', assignee: { name: 'Amara Vance', avatar: '', role: '' } },
-      { id: '2', code: 'SAH-102', title: 'Solar array dust cleaning', status: 'done', priority: 'medium', assignee: { name: 'Tariq Al-Mansoor', avatar: '', role: '' } },
-      { id: '3', code: 'SAH-103', title: 'Canopy wiper motor repair', status: 'todo', priority: 'high', assignee: { name: 'Elena Rostova', avatar: '', role: '' } },
+      { id: '1', code: 'SAH-101', title: 'Redis cache configuration', status: 'in_progress', priority: 'urgent', assignee: { name: 'Amara Vance', avatar: '', role: '' } },
+      { id: '2', code: 'SAH-102', title: 'API rate limiting middleware', status: 'done', priority: 'medium', assignee: { name: 'Tariq Al-Mansoor', avatar: '', role: '' } },
+      { id: '3', code: 'SAH-103', title: 'Docker container optimization', status: 'todo', priority: 'high', assignee: { name: 'Elena Rostova', avatar: '', role: '' } },
     ];
 
     it('filters tasks by search query', () => {
-      const results = filterAndSortTasks(tasks, 'transducer');
+      const results = filterAndSortTasks(tasks, 'Redis');
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe('1');
     });
