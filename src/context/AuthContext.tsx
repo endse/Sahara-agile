@@ -237,6 +237,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             requestedRole: assignedRole,
           }, { merge: true });
 
+          // Crucial: Create the rule-based member document so firestore.rules canAccessTeam evaluates to true
+          await setDoc(doc(db, 'teams', finalTeamId, 'members', firebaseUser.uid), {
+            uid: firebaseUser.uid,
+            joinedAt: new Date().toISOString()
+          }, { merge: true });
+
           derivedActiveRole = isManagerRole ? 'Manager' : 'Employee';
           setActiveRole(derivedActiveRole);
         }
