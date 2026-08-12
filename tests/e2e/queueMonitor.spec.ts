@@ -1,8 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function expandInsightsGroup(page: Page) {
+  const groupBtn = page.getByRole('button', { name: /^INSIGHTS/i }).first();
+  await groupBtn.click();
+}
 
 test.describe('Redis Pattern Background Job Queue & DLQ Monitor Specs', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await expandInsightsGroup(page);
     await page.click('a[href="#AsyncReports"]');
   });
 

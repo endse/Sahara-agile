@@ -107,11 +107,11 @@ export const MANAGER_STEPS: WalkthroughStep[] = [
     title: 'Demo Data Hub (/demo)',
     subtitle: 'Explore preset team datasets or reset to clean state',
     icon: 'dataset',
-    description: 'Access pre-loaded demo datasets for Hydro-Geology, Grid Architecture, Robotics, Ecology, and SatCom teams, or wipe data back to clean empty state.',
+    description: 'Access pre-loaded demo datasets for Full Stack Development, AI/ML, DevOps, Cybersecurity, and Backend teams, or wipe data back to clean empty state.',
     bullets: [
       '1-Click Seed Demo Data into active application database',
       '1-Click Reset to clean empty workspace',
-      'Filter sample team data across all desert sectors'
+      'Filter sample team data across all engineering sectors'
     ],
     targetScreen: 'Demo',
     actionLabel: 'Go to Demo Hub (/demo)'
@@ -120,78 +120,78 @@ export const MANAGER_STEPS: WalkthroughStep[] = [
 
 export const EMPLOYEE_STEPS: WalkthroughStep[] = [
   {
-    title: 'Welcome, Field Specialist',
-    subtitle: 'Daily workflow guide for Sahara Agile field operators',
+    title: 'Welcome, Software Engineer',
+    subtitle: 'Daily workflow guide for Sahara Agile developers',
     icon: 'badge',
-    description: 'As a Field Operator or Specialist, your primary hub is designed for tracking assigned mission tasks, logging daily shift hours, monitoring site weather alerts, and coordinating with team members.',
+    description: 'As a Software Engineer or Specialist, your primary hub is designed for tracking assigned sprint tasks, logging daily dev hours, monitoring build telemetry, and collaborating with team members.',
     bullets: [
       'View tasks assigned directly to your profile',
-      'Clock in/out at your field station with shift notes',
-      'Inspect live site telemetry and environmental alerts',
-      'Keep your operator profile and credentials up to date'
+      'Clock in/out at your engineering station with shift notes',
+      'Inspect live telemetry and system metrics',
+      'Keep your developer profile and credentials up to date'
     ],
     targetScreen: 'TaskBoard',
     actionLabel: 'Go to Task Board'
   },
   {
-    title: 'Mission Kanban Task Board',
+    title: 'Sprint Kanban Task Board',
     subtitle: 'Track assigned tasks from Backlog to Done',
     icon: 'view_kanban',
     description: 'Update task statuses using drag-and-drop or status buttons. Log hours spent and post activity updates.',
     bullets: [
       'Filter tasks by assignee, priority, or search query',
       'Move tasks through Backlog ➔ To Do ➔ In Progress ➔ Review ➔ Done',
-      'Open Task Inspector to view detailed telemetry logs'
+      'Open Task Inspector to view detailed API telemetry logs'
     ],
     targetScreen: 'TaskBoard',
     actionLabel: 'Open Task Board'
   },
   {
-    title: 'Shift Clock-In & Attendance Tracker',
-    subtitle: 'Record daily clock-in/out timestamps and notes',
+    title: 'Shift Clock-In & Worklog Tracker',
+    subtitle: 'Record daily clock-in/out timestamps and engineering notes',
     icon: 'timer',
-    description: 'Clock in when starting your shift at your field station. Log work notes describing completed objectives before clocking out.',
+    description: 'Clock in when starting your dev shift at your workspace. Log work notes describing completed pull requests before clocking out.',
     bullets: [
       'Self-service clock-in with automated timestamping',
       'Record break minutes and overtime hours',
-      'View approval status from your Operations Manager'
+      'View approval status from your Engineering Manager'
     ],
     targetScreen: 'AttendanceLog',
     actionLabel: 'Clock In / View Logs'
   },
   {
-    title: 'GIS Site Location & Weather Telemetry',
-    subtitle: 'Inspect field base stations and ambient weather',
+    title: 'Cloud Infrastructure & Telemetry',
+    subtitle: 'Inspect cloud clusters and data center health',
     icon: 'place',
-    description: 'Check site coordinates, active crew size, station lead, and ambient environmental conditions (temperature, wind speed, UV index).',
+    description: 'Check server region coordinates, active crew size, project lead, and ambient node metrics (CPU load, network throughput, uptime).',
     bullets: [
-      'View weather alerts like Extreme Heat (45°C) or Dust Storm warnings',
-      'Locate field hubs across Sector 1 to Sector 5',
-      'Click any station to view associated mission tasks'
+      'View system alerts like High CPU Utilization or API Latency warnings',
+      'Locate cloud clusters across Sector 1 to Sector 5',
+      'Click any workspace to view associated sprint tasks'
     ],
     targetScreen: 'ProjectMap',
     actionLabel: 'Open Project Map'
   },
   {
-    title: 'Team Roster & Field Sync',
-    subtitle: 'Connect with field specialists across desert stations',
+    title: 'Team Roster & Developer Sync',
+    subtitle: 'Connect with software engineers across cloud clusters',
     icon: 'groups',
-    description: 'View team roster, active status indicators (In Field, Active, Busy), current assigned missions, and local GMT times.',
+    description: 'View team roster, active status indicators (Online, Busy, Offline), current assigned tasks, and local timezone offsets.',
     bullets: [
-      'Contact team members via email or station relay',
-      'Check operator availability and performance scores',
-      'Coordinate cross-disciplinary missions (Hydro, Solar, Robotics)'
+      'Contact team members via email or dev channel',
+      'Check engineer availability and velocity scores',
+      'Coordinate cross-functional projects (FullStack, AI/ML, DevOps)'
     ],
     targetScreen: 'TeamSync',
     actionLabel: 'View Team Sync Roster'
   },
   {
-    title: 'Operator Profile & Credentials',
-    subtitle: 'Manage your profile, specialty tags, and assigned station',
+    title: 'Developer Profile & Credentials',
+    subtitle: 'Manage your profile, tech stack tags, and assigned workspace',
     icon: 'account_circle',
-    description: 'Customize your operator display name, phone number, field station assignment, bio, and review your personal work log history.',
+    description: 'Customize your developer display name, phone number, primary workspace assignment, bio, and review your personal work log history.',
     bullets: [
-      'Update personal credentials & specialty tags',
+      'Update personal credentials & tech stack tags',
       'Review individual shift totals & completion velocity',
       'Manage security authentication settings'
     ],
@@ -202,10 +202,10 @@ export const EMPLOYEE_STEPS: WalkthroughStep[] = [
     title: 'Demo Hub (/demo)',
     subtitle: 'Explore preset datasets or populate sample data',
     icon: 'dataset',
-    description: 'Want to test the app with full team data? Visit /demo to load demo tasks, user stories, and site maps.',
+    description: 'Want to test the app with full team data? Visit /demo to load demo tasks, user stories, and cloud project maps.',
     bullets: [
       'Seed demo data to explore full interactive app features',
-      'Switch between preset team datasets (Hydro, Solar, Robotics)',
+      'Switch between preset engineering datasets (FullStack, AI/ML, DevOps)',
       'Reset data anytime to start clean'
     ],
     targetScreen: 'Demo',
@@ -279,7 +279,7 @@ export const InteractiveWalkthrough: React.FC<InteractiveWalkthroughProps> = ({
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   activeRole === 'Manager'
                     ? 'bg-[#606C38] text-white'
-                    : 'bg-blue-600 text-white'
+                    : 'bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] font-bold'
                 }`}>
                   {activeRole} Account
                 </span>

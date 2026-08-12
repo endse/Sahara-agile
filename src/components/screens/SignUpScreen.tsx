@@ -8,11 +8,11 @@ interface SignUpProps {
 
 export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAsGuest } = useAuth();
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+  const [mode, setMode] = useState<'signup' | 'signin'>('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fieldRole, setFieldRole] = useState('Hydro-Geologist');
+  const [fieldRole, setFieldRole] = useState('Operations Specialist');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -68,66 +68,62 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDF8F3] p-4 lg:p-8 flex items-center justify-center">
-      <div className="w-full max-w-xl bg-white border border-[#F3E9DC] rounded-[32px] p-6 lg:p-10 space-y-6 shadow-md relative overflow-hidden">
-        {/* Background Decorative Element */}
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 bg-[#D4A373]/10 rounded-full blur-2xl pointer-events-none" />
-
+    <div className="min-h-screen bg-[#F7F3EA] p-4 lg:p-8 flex items-center justify-center">
+      <div className="w-full max-w-lg bg-white border border-[#E4DDD0] rounded-2xl p-6 lg:p-8 space-y-6 shadow-xs relative overflow-hidden">
         {/* Top Branding Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-[#606C38] text-white flex items-center justify-center font-headline text-2xl font-light mx-auto shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-[#C49A5A] text-[#0D0D0B] flex items-center justify-center font-bold text-xl mx-auto shadow-xs">
             S
           </div>
-          <h1 className="font-headline text-3xl font-light text-[#2D241E]">Sahara Agile Workspace</h1>
-          <p className="text-xs text-[#8B5E3C]">Authenticate field credentials or register new operator identity</p>
+          <h1 className="text-2xl font-bold text-[#171512]">Sahara Agile Works</h1>
+          <p className="text-xs text-[#625C52]">Sign in to your account or register a new user profile</p>
         </div>
 
         {/* Mode Selector */}
-        <div className="flex bg-[#FDF8F3] p-1 rounded-full border border-[#E5D5C0]">
-          <button
-            onClick={() => {
-              setMode('signup');
-              setErrorMsg('');
-            }}
-            className={`flex-1 py-2 rounded-full text-xs font-medium transition-colors ${
-              mode === 'signup' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
-            }`}
-          >
-            Create Account
-          </button>
+        <div className="flex bg-[#FBF9F4] p-1 rounded-xl border border-[#E4DDD0]">
           <button
             onClick={() => {
               setMode('signin');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2 rounded-full text-xs font-medium transition-colors ${
-              mode === 'signin' ? 'bg-[#D4A373] text-white shadow-xs' : 'text-[#5C4D42] hover:text-[#2D241E]'
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+              mode === 'signin' ? 'bg-[#171613] text-[#F7F3EA] shadow-2xs' : 'text-[#625C52] hover:text-[#171512]'
             }`}
           >
             Sign In
           </button>
+          <button
+            onClick={() => {
+              setMode('signup');
+              setErrorMsg('');
+            }}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+              mode === 'signup' ? 'bg-[#171613] text-[#F7F3EA] shadow-2xs' : 'text-[#625C52] hover:text-[#171512]'
+            }`}
+          >
+            Create Account
+          </button>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-[#BC4749]/10 border border-[#BC4749]/30 text-[#BC4749] rounded-2xl text-xs text-center font-medium">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs text-center font-semibold">
             {errorMsg}
           </div>
         )}
 
-        {/* Form Feedback */}
         {submitted ? (
-          <div className="p-6 bg-[#FEFAE0] border border-[#E9EDC9] text-[#606C38] rounded-2xl text-center space-y-2">
-            <span className="material-symbols-outlined text-4xl text-[#606C38]">verified_user</span>
-            <h3 className="font-headline text-xl font-semibold">Authentication Successful!</h3>
-            <p className="text-xs text-[#606C38]">Redirecting to Live Operations Dashboard...</p>
+          <div className="p-6 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-center space-y-2">
+            <span className="material-symbols-outlined text-4xl text-emerald-600">verified_user</span>
+            <h3 className="text-lg font-bold">Authentication Successful!</h3>
+            <p className="text-xs text-emerald-700">Redirecting to Dashboard...</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Quick OAuth Button */}
+            {/* OAuth Button */}
             <button
               onClick={handleGoogleSignIn}
               disabled={isSubmitting}
-              className="w-full bg-[#FDF8F3] hover:bg-white text-[#3D3028] border border-[#E5D5C0] py-3 rounded-full text-xs font-semibold flex items-center justify-center gap-3 transition-colors shadow-2xs"
+              className="w-full bg-[#FBF9F4] hover:bg-[#F7F3EA] text-[#171512] border border-[#E4DDD0] py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-3 transition-colors shadow-2xs"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -147,67 +143,70 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Continue with Google Account</span>
+              <span>Continue with Google</span>
             </button>
 
             <div className="flex items-center gap-3 my-2">
-              <div className="flex-1 h-px bg-[#E5D5C0]" />
-              <span className="text-[10px] uppercase font-bold text-[#8B5E3C]">or email credentials</span>
-              <div className="flex-1 h-px bg-[#E5D5C0]" />
+              <div className="flex-1 h-px bg-[#E4DDD0]" />
+              <span className="text-[10px] uppercase font-bold text-[#8A8378]">or with email</span>
+              <div className="flex-1 h-px bg-[#E4DDD0]" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {mode === 'signup' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#3D3028] uppercase">Full Name</label>
+                <div className="space-y-1">
+                  <label htmlFor="full-name" className="text-xs font-bold text-[#171512] uppercase tracking-wider">Full Name</label>
                   <input
+                    id="full-name"
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Dr. Amara Vance"
-                    className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                    placeholder="e.g. Amara Vance"
+                    className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#171512] outline-none"
                   />
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#3D3028] uppercase">SatCom Email Address</label>
+              <div className="space-y-1">
+                <label htmlFor="email-address" className="text-xs font-bold text-[#171512] uppercase tracking-wider">Email Address</label>
                 <input
+                  id="email-address"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="a.vance@sahara-agile.org"
-                  className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                  placeholder="amara.vance@sahara.io"
+                  className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#171512] outline-none"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#3D3028] uppercase">Access Key / Password</label>
+              <div className="space-y-1">
+                <label htmlFor="user-password" className="text-xs font-bold text-[#171512] uppercase tracking-wider">Password</label>
                 <input
+                  id="user-password"
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-3 text-xs font-semibold text-[#3D3028] outline-none"
+                  className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#171512] outline-none"
                 />
               </div>
 
               {mode === 'signup' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#3D3028] uppercase">Field Specialty</label>
+                <div className="space-y-1">
+                  <label htmlFor="specialty-role" className="text-xs font-bold text-[#171512] uppercase tracking-wider">Role Specialty</label>
                   <select
+                    id="specialty-role"
                     value={fieldRole}
                     onChange={(e) => setFieldRole(e.target.value)}
-                    className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-3 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
+                    className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#171512] outline-none"
                   >
-                    <option>Hydro-Geologist</option>
-                    <option>Grid Architect</option>
-                    <option>Robotics Engineer</option>
-                    <option>Ecologist</option>
-                    <option>SatCom Specialist</option>
+                    <option>Operations Manager</option>
+                    <option>Field Specialist</option>
+                    <option>Software Engineer</option>
+                    <option>Project Lead</option>
                   </select>
                 </div>
               )}
@@ -216,9 +215,9 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#606C38] hover:bg-[#4d572d] text-white py-3.5 rounded-full text-xs font-medium shadow-sm transition-colors"
+                  className="w-full bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] py-3 rounded-xl text-xs font-bold shadow-xs transition-colors"
                 >
-                  {isSubmitting ? 'Authenticating...' : mode === 'signup' ? 'Complete Operator Registration' : 'Authenticate Credentials'}
+                  {isSubmitting ? 'Authenticating...' : mode === 'signup' ? 'Complete Registration' : 'Sign In'}
                 </button>
               </div>
             </form>
@@ -226,18 +225,22 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
         )}
 
         {/* Footer Actions */}
-        <div className="pt-4 border-t border-[#E5D5C0] flex items-center justify-between text-xs text-[#8B5E3C]">
+        <div className="pt-4 border-t border-[#E4DDD0] flex items-center justify-between text-xs text-[#625C52]">
           <button
             onClick={handleGuestSignIn}
-            className="text-[#D4A373] hover:underline font-semibold"
+            className="text-[#A8793A] hover:underline font-bold"
           >
-            ← Continue as Guest Lead
+            ← Continue as Guest
           </button>
 
-          <span>Sahara Encrypted</span>
+          <button
+            onClick={() => onNavigate('Dashboard', 'none')}
+            className="text-[#625C52] hover:text-[#171512]"
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     </div>
   );
 };
-

@@ -1,5 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
+import net from 'net';
 import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
@@ -8,6 +11,114 @@ import { globalJobQueue } from './src/services/jobQueueService';
 const app = express();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sahara_agileworks_secure_jwt_secret_2026';
+
+// --- LOCAL FIREBASE EMULATOR BOOTSTRAP ---
+// The Sahara app depends on a provisioned Firestore + Auth database. When running
+// locally (dev server or the built server), we provision the Firebase Emulator
+// Suite automatically unless FIREBASE_EMULATORS is explicitly set to 'false'.
+let emulatorChild: ChildProcess | null = null;
+
+function isPortOpen(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: '127.0.0.1', port });
+    socket.setTimeout(1500);
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+function waitForPort(port: number, timeoutMs = 12000): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = async () => {
+      if (await isPortOpen(port)) return resolve();
+      if (Date.now() - start > timeoutMs) {
+        return reject(new Error(`Timed out waiting for port ${port}`));
+      }
+      setTimeout(attempt, 500);
+    };
+    attempt();
+  });
+}
+
+async function ensureEmulatorsRunning(): Promise<void> {
+  if (await isPortOpen(8080)) {
+    // Emulators already running
+    return;
+  }
+
+  const root = process.cwd();
+  const firebaseBin = path.join(root, 'node_modules', 'firebase-tools', 'lib', 'bin', 'firebase.js');
+  const exportDir = path.join(root, '.firebase', 'emulator-export');
+  let emulatorArgs = [
+    firebaseBin,
+    'emulators:start',
+    '--only',
+    'auth,firestore',
+    '--project',
+    'demo-sahara',
+  ];
+  if (fs.existsSync(exportDir)) {
+    emulatorArgs.push(`--export-on-exit=${exportDir}`);
+    emulatorArgs.push(`--import=${exportDir}`);
+  }
+
+  console.log('[sahara] Provisioning Firebase Emulators (Firestore + Auth)...');
+  try {
+    emulatorChild = spawn(process.execPath, emulatorArgs, {
+      cwd: root,
+      stdio: 'ignore',
+      env: { ...process.env, CI: 'true' },
+    });
+    emulatorChild.on('error', (err) => console.warn('[sahara] Emulators failed to launch:', err.message));
+    
+    await waitForPort(8080);
+    await waitForPort(9099);
+    console.log('[sahara] Firebase Emulators are ready (Firestore :8080, Auth :9099).');
+  } catch (err: any) {
+    console.warn('[sahara] Local emulators unavailable or timed out. Operating in fallback mode:', err.message);
+    if (emulatorChild && !emulatorChild.killed) {
+      try { emulatorChild.kill(); } catch (e) {}
+      emulatorChild = null;
+    }
+  }
+}
+
+// Watchdog: if the emulator process is killed unexpectedly, restart it so the app
+// keeps working end-to-end without a manual restart.
+let watchdogStarted = false;
+function startEmulatorWatchdog() {
+  if (watchdogStarted) return;
+  watchdogStarted = true;
+  setInterval(() => {
+    if (process.env.FIREBASE_EMULATORS === 'false') return;
+    isPortOpen(8080).then((open) => {
+      if (!open && emulatorChild) {
+        console.log('[sahara] Firestore emulator is down - attempting restart...');
+        ensureEmulatorsRunning().catch((err) =>
+          console.warn('[sahara] Emulator restart skipped:', err.message)
+        );
+      }
+    });
+  }, 15000);
+}
+
+function shutdown() {
+  if (emulatorChild && !emulatorChild.killed) {
+    try { emulatorChild.kill(); } catch (e) {}
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -22,19 +133,19 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// In-memory / initial API state fallback for REST API endpoints
+// In-memory / initial API state fallback for REST API endpoints (Computer Science & Software Agile Domain)
 let projects = [
-  { id: 'LOC-1', name: 'Al-Kufra Deep Well Site A', region: 'Sector 4 - South Basin', status: 'active', crewCount: 12, taskCount: 6, lead: 'Amara Vance' },
-  { id: 'LOC-2', name: 'Djanet Solar Microgrid 03', region: 'Sector 2 - Central Basin', status: 'warning', crewCount: 8, taskCount: 4, lead: 'Tariq Al-Mansoor' },
-  { id: 'LOC-3', name: 'Tibesti Shield Robotics Base', region: 'Sector 1 - Highland', status: 'active', crewCount: 9, taskCount: 5, lead: 'Zainab Nouri' },
+  { id: 'LOC-1', name: 'Sahara Core Platform', region: 'Sector 1 - Core Platform', status: 'active', crewCount: 12, taskCount: 6, lead: 'Amara Vance' },
+  { id: 'LOC-2', name: 'AI Analytics Engine', region: 'Sector 2 - ML Pipeline', status: 'warning', crewCount: 8, taskCount: 4, lead: 'Tariq Al-Mansoor' },
+  { id: 'LOC-3', name: 'Cloud Infrastructure & DevOps', region: 'Sector 3 - Kubernetes Cluster', status: 'active', crewCount: 9, taskCount: 5, lead: 'Elena Rostova' },
 ];
 
 let stories = [
   {
     id: 'US-101',
     projectId: 'LOC-1',
-    title: 'Automated Aquifer Telemetry & Pressure Sensing Integration',
-    description: 'As a hydro-geologist, I want real-time pressure sensor streaming to prevent over-extraction.',
+    title: 'Real-time Telemetry & API Websocket Stream',
+    description: 'As a software engineer, I want real-time task status streaming via websockets so team velocity updates dynamically.',
     points: 8,
     status: 'in_progress',
     assigneeName: 'Amara Vance',
@@ -42,8 +153,8 @@ let stories = [
   {
     id: 'US-102',
     projectId: 'LOC-2',
-    title: 'Photovoltaic Dust Ingress Monitoring & Auto-Cleaning',
-    description: 'As a solar grid engineer, I want thermal dust sensors so wiper drones deploy automatically.',
+    title: 'Predictive Task Bottleneck ML Engine',
+    description: 'As a project manager, I want machine learning model predictions on task completion timelines to identify risks early.',
     points: 5,
     status: 'completed',
     assigneeName: 'Tariq Al-Mansoor',
@@ -51,8 +162,8 @@ let stories = [
 ];
 
 let tasks = [
-  { id: 'TSK-101', code: 'SAH-802', title: 'Calibrate pressure transducers at 200m depth', status: 'in_progress', storyId: 'US-101', priority: 'urgent', assigneeName: 'Amara Vance' },
-  { id: 'TSK-102', code: 'SAH-803', title: 'Install optical opacity sensors on Sub-array B', status: 'done', storyId: 'US-102', priority: 'medium', assigneeName: 'Tariq Al-Mansoor' },
+  { id: 'TSK-101', code: 'SAH-802', title: 'Implement Redis caching layer for API endpoints', status: 'in_progress', storyId: 'US-101', priority: 'urgent', assigneeName: 'Amara Vance' },
+  { id: 'TSK-102', code: 'SAH-803', title: 'Configure Kubernetes HPA & Prometheus metrics', status: 'done', storyId: 'US-102', priority: 'medium', assigneeName: 'Tariq Al-Mansoor' },
 ];
 
 interface AttendanceItem {
@@ -79,9 +190,9 @@ let attendance: AttendanceItem[] = [
     clockOutTime: '2026-08-08T16:15:00.000Z',
     totalHours: 8.75,
     status: 'clocked_out',
-    workNotes: 'Pressure calibration at Well Site A.',
+    workNotes: 'Core API refactoring & performance tuning.',
     date: '2026-08-08',
-    locationName: 'Al-Kufra Hydro Site',
+    locationName: 'US-East Cloud Cluster',
     approvalStatus: 'approved',
     approvedBy: 'Director Council',
   },
@@ -91,9 +202,9 @@ let attendance: AttendanceItem[] = [
     userName: 'Tariq Al-Mansoor',
     clockInTime: '2026-08-08T08:00:00.000Z',
     status: 'clocked_in',
-    workNotes: 'Inspecting Sub-array B thermal inverters.',
+    workNotes: 'Deploying ML model service to Kubernetes cluster.',
     date: '2026-08-08',
-    locationName: 'Djanet Microgrid',
+    locationName: 'EU-Central Data Center',
     approvalStatus: 'pending',
   },
 ];
@@ -101,7 +212,7 @@ let attendance: AttendanceItem[] = [
 let asyncJobs = [
   {
     id: 'JOB-801',
-    title: 'Weekly Field Sprint Telemetry & Progress Audit',
+    title: 'Weekly Sprint Telemetry & Velocity Audit',
     type: 'sprint_summary',
     status: 'completed',
     progress: 100,
@@ -479,6 +590,12 @@ app.get('/api/queue/report/latest', (req, res) => {
 
 // --- VITE MIDDLEWARE & STATIC SERVING ---
 async function startServer() {
+  if (process.env.FIREBASE_EMULATORS !== 'false') {
+    process.env.VITE_USE_EMULATORS = 'true';
+    await ensureEmulatorsRunning();
+    startEmulatorWatchdog();
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

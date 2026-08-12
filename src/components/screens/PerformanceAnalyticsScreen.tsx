@@ -39,11 +39,11 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
 }) => {
   const { activeRole, userProfile, user } = useAuth();
   const isManager = activeRole === 'Manager';
-  const currentUserName = userProfile?.displayName || user?.displayName || 'Amara Vance';
+  const currentUserName = userProfile?.displayName || user?.displayName || 'Current User';
 
   // Date & Filter States
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedMonth, setSelectedMonth] = useState<number>(8); // August (1-indexed: 8)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1); // 1-indexed month
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'performance' | 'checkin_checkout' | 'heatmap' | 'burndown' | 'station_radar'>('all');
 
@@ -75,17 +75,13 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
   const userLogs = useMemo(() => {
     if (isManager) return attendanceLogs;
     return attendanceLogs.filter(
-      (l) => l.userName.toLowerCase() === currentUserName.toLowerCase() || l.userId === user?.uid || l.userName === 'Amara Vance'
+      (l) => l.userName.toLowerCase() === currentUserName.toLowerCase() || l.userId === user?.uid
     );
   }, [attendanceLogs, isManager, currentUserName, user?.uid]);
 
   const userTasks = useMemo(() => {
     if (isManager) return tasks;
-    return tasks.filter(
-      (t) =>
-        t.assignee.name.toLowerCase().includes(currentUserName.toLowerCase()) ||
-        t.assignee.name === 'Amara Vance'
-    );
+    return tasks.filter((t) => t.assignee.name.toLowerCase().includes(currentUserName.toLowerCase()));
   }, [tasks, isManager, currentUserName]);
 
   // Compute 31-day data models strictly using RBAC effectiveEmployee
@@ -107,9 +103,7 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
   // Isolate Heatmap Rows for non-managers
   const heatmapRows = useMemo(() => {
     if (isManager) return heatmapRowsAll;
-    return heatmapRowsAll.filter(
-      (r) => r.employeeName.toLowerCase() === currentUserName.toLowerCase() || r.employeeName === 'Amara Vance'
-    );
+    return heatmapRowsAll.filter((r) => r.employeeName.toLowerCase() === currentUserName.toLowerCase());
   }, [heatmapRowsAll, isManager, currentUserName]);
 
   const burndownData = useMemo(
@@ -130,9 +124,7 @@ export const PerformanceAnalyticsScreen: React.FC<PerformanceAnalyticsScreenProp
   // Isolate Radar Metrics for non-managers
   const radarMetrics = useMemo(() => {
     if (isManager) return radarMetricsAll;
-    return radarMetricsAll.filter(
-      (r) => r.employeeName.toLowerCase() === currentUserName.toLowerCase() || r.employeeName === 'Amara Vance'
-    );
+    return radarMetricsAll.filter((r) => r.employeeName.toLowerCase() === currentUserName.toLowerCase());
   }, [radarMetricsAll, isManager, currentUserName]);
 
   // Overall Aggregations

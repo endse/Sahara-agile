@@ -28,9 +28,9 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
   // Add Member Form state
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('Field Operations Specialist');
-  const [newMemberSector, setNewMemberSector] = useState('Hydro-Geology');
-  const [newMemberLocation, setNewMemberLocation] = useState('Al-Kufra Site A');
+  const [newMemberRole, setNewMemberRole] = useState('Full Stack Developer');
+  const [newMemberSector, setNewMemberSector] = useState('Full Stack Development');
+  const [newMemberLocation, setNewMemberLocation] = useState('Sahara Agile Workspace');
   const [newMemberInitialStatus, setNewMemberInitialStatus] = useState<'active' | 'in_field' | 'busy' | 'offline'>('active');
   const [newMemberPermissionStatus, setNewMemberPermissionStatus] = useState<'pending_review' | 'approved'>('approved');
 
@@ -311,7 +311,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[#78706a]">Sector:</span>
-                      <span className="font-bold text-[#c2652a]">{member.teamSector || 'Hydro-Geology'}</span>
+                      <span className="font-bold text-[#c2652a]">{member.teamSector || 'Full Stack Development'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[#78706a]">Account Status:</span>
@@ -487,19 +487,19 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#3a302a] mb-1">Field Role</label>
+                  <label className="block text-xs font-bold text-[#3a302a] mb-1">Engineering Role</label>
                   <select
                     value={newMemberRole}
                     onChange={(e) => setNewMemberRole(e.target.value)}
                     className="w-full bg-[#f2ece4] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl px-3 py-2.5 text-xs text-[#3a302a] outline-none font-medium"
                   >
-                    <option value="Field Operations Specialist">Field Operations Specialist</option>
-                    <option value="Hydrological Engineer">Hydrological Engineer</option>
-                    <option value="Solar Photovoltaic Tech">Solar Photovoltaic Tech</option>
-                    <option value="SatCom Systems Lead">SatCom Systems Lead</option>
-                    <option value="Robotics Drone Operator">Robotics Drone Operator</option>
-                    <option value="Environmental Ecologist">Environmental Ecologist</option>
-                    <option value="Operations Manager">Operations Manager</option>
+                    <option value="Full Stack Developer">Full Stack Developer</option>
+                    <option value="AI/ML Engineer">AI/ML Engineer</option>
+                    <option value="DevOps Engineer">DevOps Engineer</option>
+                    <option value="Cybersecurity Engineer">Cybersecurity Engineer</option>
+                    <option value="Backend Developer">Backend Developer</option>
+                    <option value="Frontend Architect">Frontend Architect</option>
+                    <option value="Engineering Manager">Engineering Manager</option>
                   </select>
                 </div>
 
@@ -510,11 +510,12 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                     onChange={(e) => setNewMemberSector(e.target.value)}
                     className="w-full bg-[#f2ece4] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl px-3 py-2.5 text-xs text-[#3a302a] outline-none font-medium"
                   >
-                    <option value="Hydro-Geology">Hydro-Geology</option>
-                    <option value="Solar Grid">Solar Grid</option>
-                    <option value="SatCom Arrays">SatCom Arrays</option>
-                    <option value="Robotics & Drones">Robotics & Drones</option>
-                    <option value="Ecology">Ecology</option>
+                    <option value="Full Stack Development">Full Stack Development</option>
+                    <option value="AI / Machine Learning">AI / Machine Learning</option>
+                    <option value="DevOps / Cloud">DevOps / Cloud</option>
+                    <option value="Cybersecurity">Cybersecurity</option>
+                    <option value="Backend Development">Backend Development</option>
+                    <option value="Frontend Engineering">Frontend Engineering</option>
                   </select>
                 </div>
               </div>
@@ -526,7 +527,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                     type="text"
                     value={newMemberLocation}
                     onChange={(e) => setNewMemberLocation(e.target.value)}
-                    placeholder="e.g. Al-Kufra Site A"
+                    placeholder="e.g. Sahara Agile Workspace"
                     className="w-full bg-[#f2ece4] border border-[#d8d0c8] focus:border-[#c2652a] rounded-xl px-3 py-2.5 text-xs text-[#3a302a] outline-none"
                   />
                 </div>
@@ -625,7 +626,7 @@ export const TeamSyncScreen: React.FC<TeamSyncProps> = ({
                           </span>
                         </div>
                         <p className="text-xs text-[#78706a]">
-                          {m.role} • {m.teamSector || 'Hydro-Geology'} Sector
+                          {m.role} • {m.teamSector || 'Full Stack Development'} Sector
                         </p>
                         <p className="text-[11px] font-mono text-[#c2652a]">{m.email}</p>
                       </div>

@@ -199,11 +199,11 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
                       id: `ACT-FILE-${Date.now()}`,
                       user: 'Amara Vance',
                       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-                      action: 'uploaded satellite geotag log to',
+                      action: 'uploaded API performance profile log to',
                       target: selectedTask?.code || 'Task Board',
                       time: 'Just now',
                       type: 'file',
-                      detail: 'Hydro_Sensor_Geotag_20261024.csv (8.4 MB)'
+                      detail: 'API_Telemetry_Metrics_20261024.json (8.4 MB)'
                     };
                     onAddActivity(mockFileAct);
                   }}

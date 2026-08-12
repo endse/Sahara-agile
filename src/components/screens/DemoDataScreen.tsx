@@ -44,12 +44,8 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
   const filteredTeam = selectedTeamFilter === 'all'
     ? DEMO_TEAM
     : DEMO_TEAM.filter((m) => {
-        if (selectedTeamFilter === 'hydro') return m.role.toLowerCase().includes('hydro');
-        if (selectedTeamFilter === 'grid') return m.role.toLowerCase().includes('grid') || m.role.toLowerCase().includes('energy');
-        if (selectedTeamFilter === 'robotics') return m.role.toLowerCase().includes('robotics') || m.role.toLowerCase().includes('automation');
-        if (selectedTeamFilter === 'ecology') return m.role.toLowerCase().includes('ecolog');
-        if (selectedTeamFilter === 'telecom') return m.role.toLowerCase().includes('telecom') || m.role.toLowerCase().includes('satcom') || m.role.toLowerCase().includes('fiber');
-        return true;
+        const team = demoTeams.find((t) => t.id === selectedTeamFilter);
+        return m.teamSector === team?.sector;
       });
 
   const [lastStampedAt, setLastStampedAt] = useState<string | null>(null);
@@ -111,7 +107,7 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
               Sahara Agile Stamp Demo & Firestore Control
             </h1>
             <p className="text-stone-300 text-sm max-w-3xl leading-relaxed">
-              Remove existing Firestore data and stamp fresh demo datasets directly into your workspace. Designed for instant live testing across all field sectors (Hydro-Geology, Solar Grid, Robotics, SatCom).
+              Remove existing Firestore data and stamp fresh demo datasets directly into your workspace. Designed for instant live testing across all engineering sectors (Full Stack Development, AI / Machine Learning, DevOps & Cloud, Cybersecurity).
             </p>
           </div>
 
@@ -166,7 +162,7 @@ export const DemoDataScreen: React.FC<DemoDataScreenProps> = ({
               onClick={() => onSwitchRole && onSwitchRole('Employee')}
               className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 border ${
                 activeRole === 'Employee'
-                  ? 'bg-blue-600 text-white border-blue-400 shadow-sm ring-2 ring-blue-500/40'
+                  ? 'bg-[#C49A5A] text-[#0D0D0B] font-bold border-[#C49A5A] shadow-xs'
                   : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
               }`}
             >

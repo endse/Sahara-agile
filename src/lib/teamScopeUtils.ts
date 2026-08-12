@@ -1,7 +1,7 @@
 import { Task, TeamMember, SiteLocation, UserStory, AttendanceLog, UserProfile } from '../types';
 
 export function getUserTeamSector(userProfile: UserProfile | null): string {
-  return userProfile?.teamSector || 'Hydro-Geology';
+  return userProfile?.teamSector || 'Full Stack Development';
 }
 
 /**
@@ -68,11 +68,11 @@ export function scopeLocationsByTeam(
 
   if (activeRole === 'Employee') {
     return locations.filter((loc) => {
-      if (userTeam === 'Hydro-Geology') return loc.id === 'LOC-1' || loc.lead === 'Amara Vance';
-      if (userTeam === 'Grid Architecture') return loc.id === 'LOC-2' || loc.lead === 'Tariq Al-Mansoor';
-      if (userTeam === 'Field Robotics') return loc.id === 'LOC-3' || loc.lead === 'Elena Rostova';
-      if (userTeam === 'Ecology & Environment') return loc.id === 'LOC-4' || loc.lead === 'Kofi Mensah';
-      if (userTeam === 'SatCom Telecom') return loc.id === 'LOC-5' || loc.lead === 'Maya Lin';
+      if (userTeam === 'Full Stack Development') return loc.id === 'LOC-1' || loc.lead === 'Amara Vance';
+      if (userTeam === 'AI / Machine Learning') return loc.id === 'LOC-2' || loc.lead === 'Tariq Al-Mansoor';
+      if (userTeam === 'DevOps / Cloud') return loc.id === 'LOC-3' || loc.lead === 'Elena Rostova';
+      if (userTeam === 'Cybersecurity') return loc.id === 'LOC-4' || loc.lead === 'Kofi Mensah';
+      if (userTeam === 'Backend Development') return loc.id === 'LOC-5' || loc.lead === 'Maya Lin';
       return true;
     });
   }

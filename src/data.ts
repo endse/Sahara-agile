@@ -1,135 +1,229 @@
 import { Task, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob } from './types';
 
 // ==========================================
-// DEMO DATA (ALL TEAMS & SECTORS FOR /demo)
+// DEMO DATA (SOFTWARE / CS AGILE WORKSPACE)
 // ==========================================
+
+export const DEMO_LOCATIONS: SiteLocation[] = [
+  {
+    id: 'LOC-1',
+    name: 'Sahara Agile Workspace',
+    region: 'Sector 1 - Core Platform',
+    coordinates: { x: 35, y: 30, lat: 24.80, lng: 12.10 },
+    status: 'active',
+    taskCount: 4,
+    crewCount: 6,
+    lead: 'Amara Vance',
+    temperature: 'Optimal (22°C)',
+    weatherCondition: 'Cloud Sync Operational',
+    humidity: '45%',
+    windSpeed: '10 Gbps',
+    uvIndex: 'Low (2)'
+  },
+  {
+    id: 'LOC-2',
+    name: 'AI Analytics Platform',
+    region: 'Sector 2 - ML Pipeline',
+    coordinates: { x: 62, y: 52, lat: 23.45, lng: 14.80 },
+    status: 'active',
+    taskCount: 3,
+    crewCount: 4,
+    lead: 'Tariq Al-Mansoor',
+    temperature: 'Nominal (24°C)',
+    weatherCondition: 'Model Training Active',
+    humidity: '40%',
+    windSpeed: '25 Gbps',
+    uvIndex: 'Low (1)'
+  },
+  {
+    id: 'LOC-3',
+    name: 'Cloud Infrastructure & DevOps',
+    region: 'Sector 3 - Kubernetes Cluster',
+    coordinates: { x: 28, y: 68, lat: 22.10, lng: 11.30 },
+    status: 'active',
+    taskCount: 3,
+    crewCount: 5,
+    lead: 'Elena Rostova',
+    temperature: 'Cool (20°C)',
+    weatherCondition: '99.99% Uptime',
+    humidity: '38%',
+    windSpeed: '50 Gbps',
+    uvIndex: 'Low (1)'
+  }
+];
+
+export const DEMO_STORIES: UserStory[] = [
+  {
+    id: 'US-101',
+    projectId: 'LOC-1',
+    projectName: 'Sahara Agile Workspace',
+    title: 'Real-time Sprint Telemetry & API Stream',
+    description: 'As a software engineer, I want real-time task status streaming via websockets/polling so that team velocity updates dynamically.',
+    acceptanceCriteria: [
+      'Stream task status changes in real-time across Kanban board',
+      'Transmit data payloads via Express REST API',
+      'Trigger automated notification when high priority tasks breach deadline'
+    ],
+    points: 8,
+    status: 'in_progress',
+    assigneeName: 'Amara Vance',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-09',
+    teamSector: 'Full Stack Development'
+  },
+  {
+    id: 'US-102',
+    projectId: 'LOC-2',
+    projectName: 'AI Analytics Platform',
+    title: 'Predictive Task Bottleneck ML Engine',
+    description: 'As a project manager, I want machine learning model predictions on task completion timelines to identify risks early.',
+    acceptanceCriteria: [
+      'Train lightweight regression model on historical task lead times',
+      'Display confidence score badge on task inspector panel',
+      'Route delayed jobs to background queue automatically'
+    ],
+    points: 13,
+    status: 'in_progress',
+    assigneeName: 'Tariq Al-Mansoor',
+    createdAt: '2026-08-02',
+    updatedAt: '2026-08-09',
+    teamSector: 'AI / Machine Learning'
+  },
+  {
+    id: 'US-103',
+    projectId: 'LOC-1',
+    projectName: 'Sahara Agile Workspace',
+    title: 'OAuth & Role-Based Access Control Middleware',
+    description: 'As a security engineer, I want JWT session verification and RBAC guards so that manager operations are strictly authorized.',
+    acceptanceCriteria: [
+      'Issue HttpOnly session cookies upon user login',
+      'Block unauthorized employee requests with 403 Forbidden',
+      'Provide instant UI role switcher for demo evaluation'
+    ],
+    points: 5,
+    status: 'completed',
+    assigneeName: 'Elena Rostova',
+    createdAt: '2026-08-03',
+    updatedAt: '2026-08-08',
+    teamSector: 'Backend Development'
+  }
+];
 
 export const DEMO_TASKS: Task[] = [
   {
     id: 'TASK-101',
     code: 'SAH-801',
-    title: 'Hydrological Flow Assessment & Aquifer Survey',
+    title: 'Implement WebSocket Telemetry & Task Subscription Sync',
     status: 'in_progress',
     priority: 'high',
-    teamSector: 'Hydro-Geology',
+    teamSector: 'Full Stack Development',
+    storyId: 'US-101',
+    projectId: 'LOC-1',
     assignee: {
       name: 'Amara Vance',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      role: 'Lead Hydro-Geologist'
+      role: 'Full Stack Developer'
     },
     dueDate: 'Aug 10, 2026',
     progress: 75,
-    tags: ['Hydrology', 'Survey', 'Zone A'],
-    description: 'Calibrating subsurface water sensors across Northern Sector dunes to calculate seasonal recharge rates.',
-    region: 'Sahara North - Sector 4',
-    location: { lat: 24.80, lng: 12.10, label: 'Al-Kufra Wells' },
+    tags: ['FullStack', 'WebSockets', 'Agile'],
+    description: 'Connecting task subscription hooks to real-time Firestore listeners for immediate Kanban card status updates.',
+    region: 'Sector 1 - Core Platform',
+    location: { lat: 24.80, lng: 12.10, label: 'Sahara Agile Workspace' },
     updatedAt: '10 mins ago',
     timeSpent: '18h 40m'
   },
   {
     id: 'TASK-102',
     code: 'SAH-802',
-    title: 'Solar Microgrid Inverter Optimization',
+    title: 'Optimize Async Redis Queue & DLQ Retry Handler',
     status: 'review',
     priority: 'urgent',
-    teamSector: 'Grid Architecture',
+    teamSector: 'AI / Machine Learning',
+    storyId: 'US-102',
+    projectId: 'LOC-2',
     assignee: {
       name: 'Tariq Al-Mansoor',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-      role: 'Grid Architect'
+      role: 'AI/ML Engineer'
     },
     dueDate: 'Aug 09, 2026',
     progress: 90,
-    tags: ['Energy', 'Solar', 'Infra'],
-    description: 'Updating firmware on Array-03 inverters to prevent thermal throttling during peak midday ambient heat (46°C).',
-    region: 'Sahara East - Array 3',
-    location: { lat: 23.45, lng: 14.80, label: 'Djanet Solar Farm' },
+    tags: ['AI/ML', 'Redis', 'Backend'],
+    description: 'Configuring exponential backoff retries for failed background analytics reports before moving to Dead Letter Queue.',
+    region: 'Sector 2 - ML Pipeline',
+    location: { lat: 23.45, lng: 14.80, label: 'AI Analytics Platform' },
     updatedAt: '1 hour ago',
     timeSpent: '24h 10m'
   },
   {
     id: 'TASK-103',
     code: 'SAH-803',
-    title: 'Autonomous Sand Shield Canopy Calibration',
+    title: 'Configure CI/CD Automation & Docker Container Build',
     status: 'todo',
     priority: 'medium',
-    teamSector: 'Field Robotics',
+    teamSector: 'DevOps / Cloud',
+    storyId: 'US-103',
+    projectId: 'LOC-1',
     assignee: {
       name: 'Elena Rostova',
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-      role: 'Robotics Specialist'
+      role: 'DevOps Engineer'
     },
     dueDate: 'Aug 12, 2026',
     progress: 30,
-    tags: ['Robotics', 'Maintenance'],
-    description: 'Deploying optical sensor cleaning wipers on perimeter barrier units ahead of forecasted sandstorm.',
-    region: 'Central Outpost',
-    location: { lat: 22.10, lng: 11.30, label: 'Tibesti Base' },
+    tags: ['DevOps', 'Docker', 'CI/CD'],
+    description: 'Setting up automated GitHub Action pipeline for linting, Vitest unit tests, and production esbuild bundler.',
+    region: 'Sector 3 - Kubernetes Cluster',
+    location: { lat: 22.10, lng: 11.30, label: 'Cloud Infrastructure & DevOps' },
     updatedAt: '3 hours ago',
     timeSpent: '6h 15m'
   },
   {
     id: 'TASK-104',
     code: 'SAH-804',
-    title: 'Environmental Impact Assessment & Species Census',
+    title: 'Audit Security Headers & Express HttpOnly Cookie JWT',
     status: 'done',
     priority: 'low',
-    teamSector: 'Ecology & Environment',
+    teamSector: 'Cybersecurity',
+    storyId: 'US-103',
+    projectId: 'LOC-1',
     assignee: {
       name: 'Kofi Mensah',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-      role: 'Ecologist'
+      role: 'Cybersecurity Engineer'
     },
     dueDate: 'Oct 18, 2026',
     progress: 100,
-    tags: ['Ecology', 'Compliance'],
-    description: 'Finalized wildlife camera audit around Oasis Station 2. Zero negative footprint observed.',
-    region: 'Oasis Preserve',
-    location: { lat: 25.10, lng: 10.20, label: 'Siwa Field Hub' },
+    tags: ['Security', 'JWT', 'Audit'],
+    description: 'Validated Express auth routes against OWASP security guidelines. Session cookie revocation verified.',
+    region: 'Sector 1 - Core Platform',
+    location: { lat: 25.10, lng: 10.20, label: 'Sahara Agile Workspace' },
     updatedAt: 'Yesterday',
     timeSpent: '32h 00m'
   },
   {
     id: 'TASK-105',
     code: 'SAH-805',
-    title: 'Satellite Ground Station Microwave Relay Alignment',
+    title: 'Refactor REST API Endpoint Validation Schemas',
     status: 'backlog',
     priority: 'medium',
-    teamSector: 'SatCom Telecom',
+    teamSector: 'Backend Development',
+    storyId: 'US-101',
+    projectId: 'LOC-1',
     assignee: {
       name: 'Maya Lin',
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
-      role: 'Telecom Engineer'
+      role: 'Backend Developer'
     },
     dueDate: 'Nov 12, 2026',
     progress: 0,
-    tags: ['Telecom', 'SatCom'],
-    description: 'Re-pointing secondary dish towards SaharaSat-2 to eliminate latency spikes during field transfers.',
-    region: 'Communication Ridge',
-    location: { lat: 24.15, lng: 13.40, label: 'Ghadames Mast' },
+    tags: ['Backend', 'Express', 'API'],
+    description: 'Enforcing strict Zod/TypeScript schema validation on POST /api/projects and POST /api/stories payloads.',
+    region: 'Sector 1 - Core Platform',
+    location: { lat: 24.15, lng: 13.40, label: 'Sahara Agile Workspace' },
     updatedAt: '2 days ago',
     timeSpent: '0h'
-  },
-  {
-    id: 'TASK-106',
-    code: 'SAH-806',
-    title: 'Desalination Filtration Unit Filter Replacement',
-    status: 'in_progress',
-    priority: 'high',
-    teamSector: 'Hydro-Geology',
-    assignee: {
-      name: 'Amara Vance',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      role: 'Lead Hydro-Geologist'
-    },
-    dueDate: 'Oct 28, 2026',
-    progress: 50,
-    tags: ['Hydrology', 'Infra'],
-    description: 'Swapping graphene membranes in Stage 2 water purifier.',
-    region: 'South Outpost',
-    location: { lat: 21.80, lng: 12.90, label: 'Bilma Water Rig' },
-    updatedAt: '4 hours ago',
-    timeSpent: '12h 30m'
   }
 ];
 
@@ -138,51 +232,31 @@ export const DEMO_ACTIVITIES: Activity[] = [
     id: 'ACT-1',
     user: 'Amara Vance',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    action: 'uploaded telemetry log for',
-    target: 'SAH-801 (Hydrological Assessment)',
+    action: 'created task',
+    target: 'SAH-801 (WebSocket Telemetry & Task Sync)',
     time: '12 minutes ago',
-    type: 'file',
-    detail: 'Aquifer_Pressure_Log_V4.csv (14.2 MB) attached to research folder.'
+    type: 'assignment',
+    detail: 'Task assigned to Amara Vance for Sahara Agile Workspace project.'
   },
   {
     id: 'ACT-2',
     user: 'Tariq Al-Mansoor',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    action: 'changed status of',
-    target: 'SAH-802 (Solar Grid Inverter)',
+    action: 'updated status of',
+    target: 'SAH-802 (Redis Queue & DLQ Handler)',
     time: '45 minutes ago',
     type: 'status',
-    detail: 'Moved from "In Progress" to "Review & Testing"'
+    detail: 'Moved from "In Progress" to "Review"'
   },
   {
     id: 'ACT-3',
     user: 'Elena Rostova',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-    action: 'commented on',
-    target: 'SAH-803 (Sand Shield Canopy)',
+    action: 'created user story',
+    target: 'US-103 (OAuth & RBAC Middleware)',
     time: '2 hours ago',
-    type: 'comment',
-    detail: '"Wind vector prediction looks favorable for deployment tomorrow at 06:00 UTC."'
-  },
-  {
-    id: 'ACT-4',
-    user: 'System Bot',
-    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=200&q=80',
-    action: 'created geotag alert for',
-    target: 'Sector 4 Base Camp',
-    time: '3 hours ago',
-    type: 'location',
-    detail: 'Temperature threshold breached: 44.5°C outdoor sensor reading.'
-  },
-  {
-    id: 'ACT-5',
-    user: 'Kofi Mensah',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    action: 'marked as completed',
-    target: 'SAH-804 (Species Census)',
-    time: '5 hours ago',
-    type: 'status',
-    detail: 'All environmental permits signed off by local authority.'
+    type: 'assignment',
+    detail: 'Linked to project Sahara Agile Workspace with 5 story points.'
   }
 ];
 
@@ -190,13 +264,13 @@ export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-1',
     name: 'Amara Vance',
-    role: 'Lead Hydro-Geologist',
-    teamSector: 'Hydro-Geology',
+    role: 'Full Stack Developer',
+    teamSector: 'Full Stack Development',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     email: 'a.vance@sahara-agile.org',
-    status: 'in_field',
-    currentTask: 'SAH-801 Hydrological Survey',
-    location: 'Al-Kufra Oasis Site',
+    status: 'active',
+    currentTask: 'SAH-801 WebSocket Telemetry',
+    location: 'Sahara Agile Workspace',
     localTime: '11:42 AM (GMT+2)',
     tasksCount: 4,
     performance: 96
@@ -204,13 +278,13 @@ export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-2',
     name: 'Tariq Al-Mansoor',
-    role: 'Grid Architect & Energy Lead',
-    teamSector: 'Grid Architecture',
+    role: 'AI/ML Engineer',
+    teamSector: 'AI / Machine Learning',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     email: 't.mansoor@sahara-agile.org',
     status: 'active',
     currentTask: 'SAH-802 Inverter Optimization',
-    location: 'Djanet Base Station',
+    location: 'AI Analytics Platform',
     localTime: '11:42 AM (GMT+2)',
     tasksCount: 3,
     performance: 92
@@ -218,13 +292,13 @@ export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-3',
     name: 'Elena Rostova',
-    role: 'Robotics & Automation Lead',
-    teamSector: 'Field Robotics',
+    role: 'DevOps Engineer',
+    teamSector: 'DevOps / Cloud',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     email: 'e.rostova@sahara-agile.org',
     status: 'active',
-    currentTask: 'SAH-803 Shield Calibration',
-    location: 'Tibesti Research Hub',
+    currentTask: 'SAH-803 CI/CD Automation',
+    location: 'Cloud Infrastructure',
     localTime: '11:42 AM (GMT+2)',
     tasksCount: 5,
     performance: 88
@@ -232,13 +306,13 @@ export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-4',
     name: 'Kofi Mensah',
-    role: 'Ecology & Environmental Lead',
-    teamSector: 'Ecology & Environment',
+    role: 'Cybersecurity Engineer',
+    teamSector: 'Cybersecurity',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
     email: 'k.mensah@sahara-agile.org',
-    status: 'in_field',
-    currentTask: 'Ecosystem Monitoring',
-    location: 'Siwa Field Station',
+    status: 'active',
+    currentTask: 'SAH-804 Security Audit',
+    location: 'Sahara Agile Workspace',
     localTime: '11:42 AM (GMT+2)',
     tasksCount: 2,
     performance: 98
@@ -246,13 +320,13 @@ export const DEMO_TEAM: TeamMember[] = [
   {
     id: 'TM-5',
     name: 'Maya Lin',
-    role: 'SatCom & Fiber Network Lead',
-    teamSector: 'SatCom Telecom',
+    role: 'Backend Developer',
+    teamSector: 'Backend Development',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
     email: 'm.lin@sahara-agile.org',
     status: 'busy',
-    currentTask: 'SAH-805 Microwave Relay',
-    location: 'Ghadames Mast Tower',
+    currentTask: 'SAH-805 REST API Schema Audit',
+    location: 'Sahara Agile Workspace',
     localTime: '11:42 AM (GMT+2)',
     tasksCount: 3,
     performance: 90
@@ -263,299 +337,153 @@ export const DEMO_TIMELINE: TimelineMilestone[] = [
   {
     id: 'PH-1',
     phase: 'Phase 1',
-    title: 'Geological Grounding & Aquifer Mapping',
+    title: 'Core Platform Architecture & Setup',
     startDate: 'Sep 01, 2026',
     endDate: 'Oct 15, 2026',
     status: 'completed',
     progress: 100,
     lead: 'Amara Vance',
-    region: 'Northern Sahara'
+    region: 'Sector 1 - Core Platform'
   },
   {
     id: 'PH-2',
     phase: 'Phase 2',
-    title: 'Solar Array 3 Energization & Grid Interconnect',
+    title: 'AI Predictive Engine & Redis Queue Integration',
     startDate: 'Oct 10, 2026',
     endDate: 'Nov 15, 2026',
     status: 'in_progress',
     progress: 68,
     lead: 'Tariq Al-Mansoor',
-    region: 'Djanet Basin'
+    region: 'Sector 2 - ML Pipeline'
   },
   {
     id: 'PH-3',
     phase: 'Phase 3',
-    title: 'Sand Shield Robotics Field Testing',
+    title: 'Kubernetes Cluster & Automated CI/CD Deployment',
     startDate: 'Nov 01, 2026',
     endDate: 'Dec 10, 2026',
     status: 'upcoming',
     progress: 15,
     lead: 'Elena Rostova',
-    region: 'Tibesti Ridge'
-  },
-  {
-    id: 'PH-4',
-    phase: 'Phase 4',
-    title: 'Full Oasis Eco-Habitat Stabilization',
-    startDate: 'Dec 01, 2026',
-    endDate: 'Jan 30, 2027',
-    status: 'upcoming',
-    progress: 0,
-    lead: 'Kofi Mensah',
-    region: 'Siwa Hub'
-  }
-];
-
-export const DEMO_LOCATIONS: SiteLocation[] = [
-  {
-    id: 'LOC-1',
-    name: 'Al-Kufra Hydro Research Hub',
-    region: 'Sector 4 - East Oasis',
-    coordinates: { x: 35, y: 30, lat: 24.80, lng: 12.10 },
-    status: 'active',
-    taskCount: 6,
-    crewCount: 12,
-    lead: 'Amara Vance',
-    temperature: '38°C',
-    weatherCondition: 'Clear & Arid',
-    humidity: '14%',
-    windSpeed: '18 km/h NE',
-    uvIndex: 'High (8)'
-  },
-  {
-    id: 'LOC-2',
-    name: 'Djanet Solar Microgrid 03',
-    region: 'Sector 2 - Central Basin',
-    coordinates: { x: 62, y: 52, lat: 23.45, lng: 14.80 },
-    status: 'warning',
-    taskCount: 4,
-    crewCount: 8,
-    lead: 'Tariq Al-Mansoor',
-    temperature: '45°C',
-    weatherCondition: 'Extreme Heat & Dust Watch',
-    humidity: '9%',
-    windSpeed: '32 km/h E',
-    uvIndex: 'Extreme (11+)'
-  },
-  {
-    id: 'LOC-3',
-    name: 'Tibesti Shield Robotics Base',
-    region: 'Sector 1 - Highland',
-    coordinates: { x: 28, y: 68, lat: 22.10, lng: 11.30 },
-    status: 'active',
-    taskCount: 5,
-    crewCount: 9,
-    lead: 'Elena Rostova',
-    temperature: '32°C',
-    weatherCondition: 'Mountain Gusts & Fair Sky',
-    humidity: '22%',
-    windSpeed: '28 km/h NW',
-    uvIndex: 'Moderate (6)'
-  },
-  {
-    id: 'LOC-4',
-    name: 'Siwa Ecology Station',
-    region: 'Sector 5 - North Border',
-    coordinates: { x: 78, y: 22, lat: 25.10, lng: 10.20 },
-    status: 'completed',
-    taskCount: 2,
-    crewCount: 5,
-    lead: 'Kofi Mensah',
-    temperature: '34°C',
-    weatherCondition: 'Oasis Breeze & Sunny',
-    humidity: '35%',
-    windSpeed: '14 km/h S',
-    uvIndex: 'Moderate (5)'
-  },
-  {
-    id: 'LOC-5',
-    name: 'Ghadames Telecom Mast',
-    region: 'Sector 3 - West Relay',
-    coordinates: { x: 50, y: 38, lat: 24.15, lng: 13.40 },
-    status: 'planned',
-    taskCount: 3,
-    crewCount: 4,
-    lead: 'Maya Lin',
-    temperature: '41°C',
-    weatherCondition: 'Dry Thermal Drafts',
-    humidity: '12%',
-    windSpeed: '22 km/h ESE',
-    uvIndex: 'Very High (10)'
-  }
-];
-
-export const DEMO_STORIES: UserStory[] = [
-  {
-    id: 'US-101',
-    projectId: 'LOC-1',
-    projectName: 'Al-Kufra Deep Well Site A',
-    title: 'Automated Aquifer Telemetry & Pressure Sensing Integration',
-    description: 'As a hydro-geologist, I want real-time aquifer pressure sensor streaming so that I can prevent over-extraction during peak heat cycles.',
-    acceptanceCriteria: [
-      'Calibrate pressure transducers at 200m depth',
-      'Transmit data packets via SatCom relay every 15 minutes',
-      'Trigger automated emergency cutoff if pressure drops below 2.4 bar'
-    ],
-    points: 8,
-    status: 'in_progress',
-    assigneeName: 'Amara Vance',
-    teamSector: 'Hydro-Geology',
-    createdAt: '2026-08-01',
-    updatedAt: '2026-08-07'
-  },
-  {
-    id: 'US-102',
-    projectId: 'LOC-2',
-    projectName: 'Djanet Solar Microgrid 03',
-    title: 'Photovoltaic Dust Ingress Monitoring & Auto-Cleaning',
-    description: 'As a solar grid engineer, I want thermal dust sensors on panel arrays so that automated wiper drones deploy when efficiency drops > 12%.',
-    acceptanceCriteria: [
-      'Install optical dust opacity sensors on Sub-array B',
-      'Integrate drone signal trigger with main inverter board',
-      'Log daily efficiency metrics to Firestore telemetry'
-    ],
-    points: 5,
-    status: 'completed',
-    assigneeName: 'Tariq Al-Mansoor',
-    teamSector: 'Grid Architecture',
-    createdAt: '2026-07-25',
-    updatedAt: '2026-08-05'
-  },
-  {
-    id: 'US-103',
-    projectId: 'LOC-3',
-    projectName: 'Tibesti Shield Robotics Base',
-    title: 'Autonomous Sand Rover Navigation Mesh & Obstacle Avoidance',
-    description: 'As a field robotics lead, I want 3D LiDAR point-cloud mapping on autonomous survey vehicles so they can navigate dune drifts safely.',
-    acceptanceCriteria: [
-      'Integrate Solid-State LiDAR payload with navigation stack',
-      'Test night navigation under zero-visibility dust storm conditions',
-      'Implement fail-safe return to base procedure'
-    ],
-    points: 13,
-    status: 'backlog',
-    assigneeName: 'Elena Rostova',
-    teamSector: 'Field Robotics',
-    createdAt: '2026-08-03',
-    updatedAt: '2026-08-08'
+    region: 'Sector 3 - Kubernetes Cluster'
   }
 ];
 
 export const DEMO_ATTENDANCE: AttendanceLog[] = [
   {
     id: 'ATT-1',
-    userId: 'USR-01',
+    userId: 'TM-1',
     userName: 'Amara Vance',
     userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-08T07:30:00.000Z',
-    clockOutTime: '2026-08-08T16:15:00.000Z',
-    totalHours: 8.75,
+    clockInTime: '2026-08-09T08:00:00.000Z',
+    clockOutTime: '2026-08-09T17:00:00.000Z',
+    totalHours: 8.5,
     status: 'clocked_out',
-    workNotes: 'Completed pressure log audit at Subsurface Well Site A. All telemetry green.',
-    date: '2026-08-08',
-    locationName: 'Al-Kufra Hydro Site',
-    breakMinutes: 45,
-    overtimeHours: 0.75,
+    workNotes: 'Developed WebSocket telemetry handler and sprint board listeners.',
+    date: '2026-08-09',
+    locationName: 'Sahara Agile Workspace',
+    breakMinutes: 30,
     approvalStatus: 'approved',
-    approvedBy: 'Director Council',
-    managerNotes: 'Verified with pressure sensor telemetry log.',
-    teamSector: 'Hydro-Geology'
+    approvedBy: 'System Manager',
+    teamSector: 'Full Stack Development'
   },
   {
     id: 'ATT-2',
-    userId: 'USR-02',
+    userId: 'TM-2',
     userName: 'Tariq Al-Mansoor',
     userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-08T08:00:00.000Z',
-    status: 'clocked_in',
-    workNotes: 'Inspecting Sub-array B thermal inverters at Djanet Station.',
-    date: '2026-08-08',
-    locationName: 'Djanet Microgrid',
+    clockInTime: '2026-08-09T08:30:00.000Z',
+    clockOutTime: '2026-08-09T17:30:00.000Z',
+    totalHours: 8.0,
+    status: 'clocked_out',
+    workNotes: 'Tuned ML bottleneck prediction model on historical lead times.',
+    date: '2026-08-09',
+    locationName: 'AI Analytics Platform',
     breakMinutes: 30,
-    approvalStatus: 'pending',
-    teamSector: 'Grid Architecture'
+    approvalStatus: 'approved',
+    approvedBy: 'System Manager',
+    teamSector: 'AI / Machine Learning'
   },
   {
     id: 'ATT-3',
-    userId: 'USR-03',
+    userId: 'TM-3',
     userName: 'Elena Rostova',
     userAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-08T08:15:00.000Z',
-    status: 'clocked_in',
-    workNotes: 'Testing autonomous rover LiDAR sensor harness.',
+    clockInTime: '2026-08-08T07:45:00.000Z',
+    clockOutTime: '2026-08-08T17:15:00.000Z',
+    totalHours: 9.0,
+    status: 'clocked_out',
+    workNotes: 'Automated GitHub Actions pipeline for linting and Vitest coverage.',
     date: '2026-08-08',
-    locationName: 'Chott el Djerid Hub',
-    breakMinutes: 15,
-    approvalStatus: 'pending',
-    teamSector: 'Field Robotics'
+    locationName: 'Cloud Infrastructure & DevOps',
+    breakMinutes: 30,
+    approvalStatus: 'approved',
+    approvedBy: 'System Manager',
+    teamSector: 'DevOps / Cloud'
   },
   {
     id: 'ATT-4',
-    userId: 'USR-04',
+    userId: 'TM-4',
     userName: 'Kofi Mensah',
     userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-07T07:00:00.000Z',
-    clockOutTime: '2026-08-07T17:30:00.000Z',
-    totalHours: 10.5,
+    clockInTime: '2026-08-08T08:15:00.000Z',
+    clockOutTime: '2026-08-08T18:15:00.000Z',
+    totalHours: 10.0,
     status: 'clocked_out',
-    workNotes: 'Emergency pipeline repair during sandstorm high winds.',
-    date: '2026-08-07',
-    locationName: 'Siwa Oasis Shelter',
-    breakMinutes: 30,
-    overtimeHours: 2.5,
+    workNotes: 'Hardened Express auth routes against OWASP security guidelines.',
+    date: '2026-08-08',
+    locationName: 'Sahara Agile Workspace',
+    breakMinutes: 45,
+    overtimeHours: 2.0,
     approvalStatus: 'approved',
-    approvedBy: 'Amara Vance',
-    managerNotes: 'Commended for emergency response during gale alert.',
-    teamSector: 'Ecology & Environment'
+    approvedBy: 'System Manager',
+    teamSector: 'Cybersecurity'
   },
   {
     id: 'ATT-5',
-    userId: 'USR-05',
+    userId: 'TM-5',
     userName: 'Maya Lin',
-    userAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-    clockInTime: '2026-08-07T08:30:00.000Z',
-    clockOutTime: '2026-08-07T16:30:00.000Z',
+    userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
+    clockInTime: '2026-08-08T08:30:00.000Z',
+    clockOutTime: '2026-08-08T16:30:00.000Z',
     totalHours: 8.0,
     status: 'clocked_out',
-    workNotes: 'Routine drone survey and solar panel dust index mapping.',
-    date: '2026-08-07',
-    locationName: 'Sebha Solar Complex',
-    breakMinutes: 45,
-    overtimeHours: 0,
+    workNotes: 'Drafted Zod validation schemas for project and story endpoints.',
+    date: '2026-08-08',
+    locationName: 'Sahara Agile Workspace',
+    breakMinutes: 30,
     approvalStatus: 'approved',
-    approvedBy: 'Amara Vance',
-    managerNotes: 'All clear.',
-    teamSector: 'SatCom Telecom'
+    approvedBy: 'System Manager',
+    teamSector: 'Backend Development'
   }
 ];
 
 export const DEMO_ASYNC_JOBS: AsyncJob[] = [
   {
-    id: 'JOB-801',
-    title: 'Weekly Field Sprint Telemetry & Progress Audit',
+    id: 'JOB-101',
+    title: 'Monthly Sprint Summary & Velocity Report',
     type: 'sprint_summary',
     status: 'completed',
     progress: 100,
-    resultSummary: 'Report compiled successfully. 18 tasks audited across 5 regional stations. Overall velocity: +14% relative to baseline.',
+    resultSummary: 'Report compiled successfully. 5 tasks audited across 3 project sectors. Overall velocity: +14% relative to baseline.',
     retryCount: 0,
-    createdAt: '2026-08-07T18:00:00.000Z',
-    completedAt: '2026-08-07T18:02:15.000Z'
+    createdAt: '2026-08-09T00:00:00Z',
+    completedAt: '2026-08-09T00:02:15Z'
   },
   {
-    id: 'JOB-802',
-    title: 'Monthly Employee Work Hours & Attendance Consolidation',
+    id: 'JOB-102',
+    title: 'Employee Worklog & Attendance Audit',
     type: 'attendance_audit',
-    status: 'completed',
-    progress: 100,
-    resultSummary: 'Consolidated 142 shift logs for 10 field operators. Total logged hours: 1,180.0 hrs. Zero unverified absences.',
-    retryCount: 0,
-    createdAt: '2026-08-01T00:00:00.000Z',
-    completedAt: '2026-08-01T00:01:40.000Z'
+    status: 'processing',
+    progress: 45,
+    resultSummary: 'Consolidating shift logs across all five specialist teams.',
+    retryCount: 1,
+    createdAt: '2026-08-09T00:00:00Z'
   }
 ];
 
 // ==========================================
-// CLEAN DEFAULT INITIAL STATE (EMPTY)
+// INITIAL CLEAN EMPTY STATE (PRODUCTION MODE)
 // ==========================================
 
 export const INITIAL_TASKS: Task[] = [];
@@ -567,7 +495,6 @@ export const INITIAL_STORIES: UserStory[] = [];
 export const INITIAL_ATTENDANCE: AttendanceLog[] = [];
 export const INITIAL_ASYNC_JOBS: AsyncJob[] = [];
 
-// Helper functions for /demo
 export function getAllDemoData() {
   return {
     tasks: DEMO_TASKS,
@@ -584,10 +511,10 @@ export function getAllDemoData() {
 export function getDemoTeams() {
   return [
     { id: 'all', name: 'All Teams & Sectors', count: DEMO_TEAM.length },
-    { id: 'hydro', name: 'Hydro-Geology Team', lead: 'Amara Vance', role: 'Lead Hydro-Geologist' },
-    { id: 'grid', name: 'Grid Architecture Team', lead: 'Tariq Al-Mansoor', role: 'Grid Architect & Energy Lead' },
-    { id: 'robotics', name: 'Field Robotics & Automation', lead: 'Elena Rostova', role: 'Robotics & Automation Lead' },
-    { id: 'ecology', name: 'Ecology & Environment', lead: 'Kofi Mensah', role: 'Ecology Lead' },
-    { id: 'telecom', name: 'SatCom & Fiber Telecom', lead: 'Maya Lin', role: 'Telecom Engineer' },
+    { id: 'fullstack', name: 'Full Stack Development', sector: 'Full Stack Development', lead: 'Amara Vance' },
+    { id: 'ai-ml', name: 'AI / Machine Learning', sector: 'AI / Machine Learning', lead: 'Tariq Al-Mansoor' },
+    { id: 'devops', name: 'DevOps & Cloud', sector: 'DevOps / Cloud', lead: 'Elena Rostova' },
+    { id: 'security', name: 'Cybersecurity', sector: 'Cybersecurity', lead: 'Kofi Mensah' },
+    { id: 'backend', name: 'Backend Development', sector: 'Backend Development', lead: 'Maya Lin' },
   ];
 }

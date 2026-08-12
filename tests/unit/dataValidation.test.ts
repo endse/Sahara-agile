@@ -125,13 +125,13 @@ describe('Data Validation & Clean Empty State Integrity', () => {
   });
 
   describe('Team Scoping Utilities', () => {
-    const mockProfile: any = { displayName: 'Amara Vance', teamSector: 'Hydro-Geology' };
+    const mockProfile: any = { displayName: 'Amara Vance', teamSector: 'Backend Development' };
 
-    it('scopes tasks for employee to assigned Hydro-Geology team sector', () => {
+    it('scopes tasks for employee to assigned Backend Development team sector', () => {
       const scoped = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Employee');
       expect(scoped.length).toBeGreaterThan(0);
       scoped.forEach((t) => {
-        expect(t.teamSector === 'Hydro-Geology' || t.assignee.name.includes('Amara')).toBe(true);
+        expect(t.teamSector === 'Backend Development' || t.assignee.name.includes('Amara')).toBe(true);
       });
     });
 
@@ -139,8 +139,8 @@ describe('Data Validation & Clean Empty State Integrity', () => {
       const allTasks = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Manager', 'All Teams');
       expect(allTasks).toEqual(DEMO_TASKS);
 
-      const hydroTasks = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Manager', 'Hydro-Geology');
-      expect(hydroTasks.length).toBe(2);
+      const backendTasks = scopeTasksByTeam(DEMO_TASKS, mockProfile, 'Manager', 'Backend Development');
+      expect(backendTasks.length).toBe(1);
     });
   });
 });

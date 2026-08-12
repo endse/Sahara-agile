@@ -19,10 +19,16 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
   onNavigate,
 }) => {
   const { userProfile, user, activeRole } = useAuth();
-  const currentUserName = userProfile?.displayName || 'Amara Vance';
+  const currentUserName = userProfile?.displayName || user?.displayName || 'Current User';
   const currentUserAvatar =
     userProfile?.photoURL ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+
+  // Monthly chart target month (defaults to current calendar month, never frozen)
+  const chartDate = new Date();
+  const chartYear = chartDate.getFullYear();
+  const chartMonth = chartDate.getMonth() + 1;
+  const chartMonthName = chartDate.toLocaleString('en-US', { month: 'long' });
 
   // Navigation Sub-Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'manager_oversight' | 'reports' | 'monthly_charts'>('overview');
@@ -34,7 +40,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
 
   // Station and Clock-in form state
-  const [selectedStation, setSelectedStation] = useState<string>('Al-Kufra Hydro Site');
+  const [selectedStation, setSelectedStation] = useState<string>('Sahara Agile Workspace');
   const [workNotesInput, setWorkNotesInput] = useState('');
   const [selectedBreakMinutes, setSelectedBreakMinutes] = useState<number>(30);
 
@@ -46,7 +52,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
   // Manual Add Form State for Managers
   const [manualForm, setManualForm] = useState({
     userName: currentUserName,
-    locationName: 'Al-Kufra Hydro Site',
+    locationName: 'Sahara Agile Workspace',
     date: new Date().toISOString().split('T')[0],
     clockInTime: '08:00',
     clockOutTime: '17:00',
@@ -247,8 +253,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
     if (activeRole === 'Employee') {
       const isMine =
         log.userName.toLowerCase() === currentUserName.toLowerCase() ||
-        log.userId === user?.uid ||
-        log.userName === 'Amara Vance'; // Fallback sample user matching default
+        log.userId === user?.uid;
       if (!isMine) return false;
     }
 
@@ -280,7 +285,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
 
   // Personal Logs for Employee view
   const myLogs = attendanceLogs.filter(
-    (l) => l.userName.toLowerCase() === currentUserName.toLowerCase() || l.userId === user?.uid || l.userName === 'Amara Vance'
+    (l) => l.userName.toLowerCase() === currentUserName.toLowerCase() || l.userId === user?.uid
   );
   const myShiftHours = myLogs.reduce((acc, curr) => acc + (curr.totalHours || 0), 0);
   const myOvertimeHours = myLogs.reduce((acc, curr) => acc + (curr.overtimeHours || 0), 0);
@@ -574,11 +579,11 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
                         onChange={(e) => setSelectedStation(e.target.value)}
                         className="bg-[#FDF8F3] border border-[#E5D5C0] rounded-xl px-3 py-2 text-xs text-[#3D3028] font-medium outline-none focus:ring-2 focus:ring-[#D4A373]"
                       >
-                        <option value="Al-Kufra Hydro Site">Al-Kufra Hydro Site</option>
-                        <option value="Djanet Microgrid">Djanet Microgrid Station</option>
-                        <option value="Chott el Djerid Hub">Chott el Djerid Tech Hub</option>
-                        <option value="Sebha Solar Complex">Sebha Solar Complex</option>
-                        <option value="Siwa Oasis Shelter">Siwa Oasis Field Shelter</option>
+                        <option value="Sahara Agile Workspace">Sahara Agile Workspace</option>
+                        <option value="AI Analytics Platform">AI Analytics Platform</option>
+                        <option value="Cloud Infrastructure & DevOps">Cloud Infrastructure & DevOps</option>
+                        <option value="US-East Cloud Cluster">US-East Cloud Cluster</option>
+                        <option value="EU-Central Data Center">EU-Central Data Center</option>
                       </select>
 
                       <select
@@ -760,7 +765,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
 
                       <td className="px-4 py-3 text-[#5C4D42]">
                         <span className="bg-[#F3E9DC] text-[#8B5E3C] px-2 py-0.5 rounded-md text-[11px] font-medium border border-[#E5D5C0]">
-                          {log.locationName || 'Al-Kufra Site'}
+                          {log.locationName || 'Sahara Agile Workspace'}
                         </span>
                       </td>
 
@@ -972,10 +977,10 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
             </div>
 
             <CheckInOutMonthlyChart
-              data={getMonthlyCheckInOutData(2026, 8, selectedEmployee, attendanceLogs, team)}
+              data={getMonthlyCheckInOutData(chartYear, chartMonth, selectedEmployee, attendanceLogs, team)}
               selectedEmployee={selectedEmployee}
-              monthName="August"
-              year={2026}
+              monthName={chartMonthName}
+              year={chartYear}
               isManager={activeRole === 'Manager'}
               onSelectEmployee={setSelectedEmployee}
               attendanceLogs={attendanceLogs}
@@ -1010,7 +1015,7 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-white p-3 rounded-xl border border-[#E5D5C0]">
                   <span className="text-[10px] text-[#8B5E3C] uppercase font-bold block">Field Station</span>
-                  <span className="font-semibold text-[#3D3028]">{inspectingLog.locationName || 'Al-Kufra Site'}</span>
+                  <span className="font-semibold text-[#3D3028]">{inspectingLog.locationName || 'Sahara Agile Workspace'}</span>
                 </div>
 
                 <div className="bg-white p-3 rounded-xl border border-[#E5D5C0]">

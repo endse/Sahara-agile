@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ScreenId, TransitionType, Task, Activity, TeamMember, TimelineMilestone, SiteLocation } from './types';
+import { ScreenId, TransitionType, Task, Activity, TeamMember, TimelineMilestone, SiteLocation, AppNotification, UserStory } from './types';
 import {
   INITIAL_TASKS,
   INITIAL_ACTIVITIES,
@@ -33,6 +33,7 @@ import {
   subscribeTimeline,
   saveTimelineMilestone,
   subscribeStories,
+  saveStory,
   subscribeAttendance,
   subscribeAsyncJobs,
   seedDemoDataToFirestore,
@@ -42,6 +43,7 @@ import { SidebarNavigation } from './components/SidebarNavigation';
 import { TopHeader } from './components/TopHeader';
 
 import { DashboardScreen } from './components/screens/DashboardScreen';
+import { ProjectsScreen } from './components/screens/ProjectsScreen';
 import { GlobalSearchScreen } from './components/screens/GlobalSearchScreen';
 import { ProjectTimelineScreen } from './components/screens/ProjectTimelineScreen';
 import { TaskBoardScreen } from './components/screens/TaskBoardScreen';
@@ -110,9 +112,10 @@ function AppContent() {
   const [team, setTeam] = useState<TeamMember[]>(INITIAL_TEAM);
   const [timeline, setTimeline] = useState<TimelineMilestone[]>(INITIAL_TIMELINE);
   const [locations, setLocations] = useState<SiteLocation[]>(INITIAL_LOCATIONS);
-  const [stories, setStories] = useState<import('./types').UserStory[]>(INITIAL_STORIES);
+  const [stories, setStories] = useState<UserStory[]>(INITIAL_STORIES);
   const [attendanceLogs, setAttendanceLogs] = useState<import('./types').AttendanceLog[]>(INITIAL_ATTENDANCE);
   const [asyncJobs, setAsyncJobs] = useState<import('./types').AsyncJob[]>(INITIAL_ASYNC_JOBS);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(tasks[0] || null);
 
   // Seed Demo Data into State & Firestore
@@ -213,6 +216,11 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [currentScreen]);
 
+  // Notification system: records a recent activity event for the header bell
+  const handleNotify = (notification: AppNotification) => {
+    setNotifications(prev => [notification, ...prev].slice(0, 15));
+  };
+
   const handleAddTask = async (newTask: Task) => {
     setTasks(prev => [newTask, ...prev]);
     await saveTask(newTask);
@@ -230,6 +238,30 @@ function AppContent() {
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
+
+    // Notification system event
+    handleNotify({
+      id: `NOTIF-${Date.now()}`,
+      title: 'New task created',
+      message: `${newTask.code} - ${newTask.title}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'task_created',
+      targetScreen: 'TaskBoard',
+      targetId: newTask.id,
+    });
+    if (newTask.assignee.name && newTask.assignee.name !== 'Unassigned') {
+      handleNotify({
+        id: `NOTIF-${Date.now() + 1}`,
+        title: 'Task assigned',
+        message: `${newTask.title} was assigned to ${newTask.assignee.name}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: 'task_assigned',
+        targetScreen: 'TaskBoard',
+        targetId: newTask.id,
+      });
+    }
   };
 
   const handleAddProject = async (projectData: {
@@ -289,6 +321,47 @@ function AppContent() {
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
+
+    // Notification system event
+    handleNotify({
+      id: `NOTIF-${Date.now()}`,
+      title: 'New project initialized',
+      message: `${projectData.name} registered in ${projectData.region}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'project_created',
+      targetScreen: 'Projects',
+      targetId: newLoc.id,
+    });
+  };
+
+  const handleAddStory = async (newStory: UserStory) => {
+    setStories(prev => [newStory, ...prev]);
+    await saveStory(newStory);
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userProfile?.displayName || 'Amara Vance',
+      avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      action: 'created user story',
+      target: `${newStory.id} (${newStory.title})`,
+      time: 'Just now',
+      type: 'status',
+      detail: `${newStory.points} story points for ${newStory.projectName}`
+    };
+    setActivities(prev => [newAct, ...prev]);
+    await saveActivity(newAct);
+
+    handleNotify({
+      id: `NOTIF-${Date.now()}`,
+      title: 'User story created',
+      message: `${newStory.id} - ${newStory.title}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'story_created',
+      targetScreen: 'UserStories',
+      targetId: newStory.id,
+    });
   };
 
   const handleAddActivity = async (newAct: Activity) => {
@@ -308,7 +381,7 @@ function AppContent() {
       target: `${newMember.name} (${newMember.role})`,
       time: 'Just now',
       type: 'assignment',
-      detail: `Assigned to ${newMember.location || 'Al-Kufra Site A'} - Sector: ${newMember.teamSector || 'Hydro-Geology'}`
+      detail: `Assigned to ${newMember.location || 'Sahara Agile Workspace'} - Sector: ${newMember.teamSector || 'Full Stack Development'}`
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);
@@ -397,29 +470,30 @@ function AppContent() {
   };
 
   const screenSubtitles: Record<ScreenId, string> = {
-    Dashboard: 'Sector 04 Live Operational Overview & Metrics',
-    GlobalSearch: 'Cross-index query engine for tasks, sites, and team members',
-    ProjectTimeline: 'Strategic roadmap and milestone phase progression',
-    TaskBoard: 'Agile Kanban task tracking and mission dispatch',
-    UserStories: 'Agile Hierarchy: Project ➔ User Story ➔ Tasks',
-    AttendanceLog: 'Live shift clock-in/out, hours tracking, and notes',
-    AsyncReports: 'Asynchronous background queues & report execution',
-    ProjectMap: 'GIS spatial telemetry & site location coordinates',
-    Settings: 'Workspace parameters, notifications, and SatCom encryption',
-    TeamSync: 'Field team roster, location tracking, and status',
-    NewTask: 'Dispatch mission or field research objective',
-    NewProject: 'Register new field site or infrastructure project',
-    TaskBoardActivity: 'Task inspector with live telemetry activity feed',
-    Profile: 'Dynamic operator profile, credentials, and field station assignment',
-    SignUp: 'Field operator credential authentication',
-    PerformanceAnalytics: 'Monthly employee performance graphs, check-in/out charts & analytics',
+    Dashboard: 'Overview of your projects and team progress.',
+    Projects: 'Project ➔ User Story ➔ Task hierarchy management.',
+    GlobalSearch: 'Cross-workspace search for tasks, projects, and team members.',
+    ProjectTimeline: 'Strategic roadmap and milestone phase progression.',
+    TaskBoard: 'Agile Kanban task tracking and status management.',
+    UserStories: 'Agile Hierarchy: Project ➔ User Story ➔ Tasks.',
+    AttendanceLog: 'Team shift attendance and working hours log.',
+    AsyncReports: 'Asynchronous background queues & report execution.',
+    ProjectMap: 'Project site location map and status.',
+    Settings: 'Workspace preferences and account configuration.',
+    TeamSync: 'Team roster, member roles, and active status.',
+    NewTask: 'Create new sprint task.',
+    NewProject: 'Register new project workspace.',
+    TaskBoardActivity: 'Task inspector and activity feed.',
+    Profile: 'User profile and credentials.',
+    SignUp: 'User authentication and access.',
+    PerformanceAnalytics: 'Performance graphs, check-in charts & velocity analytics.',
     Demo: 'Demo Data & Team Showcase Hub (/demo)'
   };
 
   const isFullModalScreen = currentScreen === 'SignUp' || currentScreen === 'GlobalSearch' || currentScreen === 'NewTask' || currentScreen === 'NewProject';
 
   return (
-    <div className="min-h-screen bg-[#FDF8F3] text-[#3D3028] flex flex-col lg:flex-row antialiased selection:bg-[#D4A373] selection:text-white">
+    <div className="min-h-screen bg-[#F7F3EA] text-[#171512] flex flex-col lg:flex-row antialiased selection:bg-[#C49A5A] selection:text-[#0D0D0B]">
       {/* Sidebar Navigation */}
       {!isFullModalScreen && (
         <SidebarNavigation
@@ -446,6 +520,7 @@ function AppContent() {
             onSelectTask={setSelectedTask}
             managedSector={managedSector}
             onSelectManagedSector={setManagedSector}
+            notifications={notifications}
           />
         )}
 
@@ -475,6 +550,20 @@ function AppContent() {
                   activities={activities}
                   team={scopedTeam}
                   locations={scopedLocations}
+                  stories={scopedStories}
+                  onNavigate={handleNavigate}
+                  onSelectTask={(task) => setSelectedTask(task)}
+                />
+              )}
+
+              {currentScreen === 'Projects' && (
+                <ProjectsScreen
+                  locations={scopedLocations}
+                  stories={scopedStories}
+                  tasks={scopedTasks}
+                  timeline={timeline}
+                  team={scopedTeam}
+                  onAddTask={handleAddTask}
                   onNavigate={handleNavigate}
                   onSelectTask={(task) => setSelectedTask(task)}
                 />
@@ -518,6 +607,9 @@ function AppContent() {
                     stories={scopedStories}
                     locations={scopedLocations}
                     tasks={scopedTasks}
+                    team={scopedTeam}
+                    onAddStory={handleAddStory}
+                    onAddTask={handleAddTask}
                     onOpenMobileMenu={() => setIsMobileNavOpen(true)}
                     onNavigate={handleNavigate}
                   />

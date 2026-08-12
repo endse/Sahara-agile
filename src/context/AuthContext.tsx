@@ -79,13 +79,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newProfile: UserProfile = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
-          displayName: customName || firebaseUser.displayName || 'Field Operator',
+          displayName: customName || firebaseUser.displayName || 'Software Engineer',
           photoURL: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          role: customRole || 'Operations Manager',
-          specialty: 'Groundwater & SatCom Systems',
-          assignedStation: 'Al-Kufra Site A',
-          phone: '+218 (91) 402-8819',
-          bio: 'Lead field operator coordinating hydrological sensor arrays and solar microgrid sync across Sector 4.',
+          role: customRole || 'Software Manager',
+          specialty: 'Full-Stack & Cloud Architecture',
+          assignedStation: 'US-East Cloud Cluster',
+          phone: '+1 (415) 890-2026',
+          bio: 'Lead software engineer coordinating API microservices, Redis queues, and Kubernetes deployment pipelines.',
           updatedAt: new Date().toISOString(),
         };
         await setDoc(userRef, newProfile);
@@ -139,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInAsGuest = async () => {
     const res = await signInAnonymously(auth);
     if (res.user) {
-      await syncUserProfile(res.user, 'Guest Field Engineer', 'Oasis Dispatcher');
+      await syncUserProfile(res.user, 'Guest Software Engineer', 'Cloud Developer');
     }
   };
 
