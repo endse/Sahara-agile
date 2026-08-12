@@ -261,6 +261,11 @@ function AppContent() {
     await saveActivity(newAct);
   };
 
+  const handleUpdateTimelineMilestone = async (item: TimelineMilestone) => {
+    setTimeline(prev => prev.map(m => m.id === item.id ? item : m));
+    await saveTimelineMilestone(item);
+  };
+
   const handleAddActivity = async (newAct: Activity) => {
     const enhancedAct: Activity = { ...newAct, teamId: userProfile?.teamId || '' };
     setActivities(prev => [enhancedAct, ...prev]);
@@ -587,7 +592,12 @@ function AppContent() {
               {currentScreen === 'ProjectTimeline' && (
                 <ProjectTimelineScreen
                   timeline={scopedTimeline}
+                  tasks={scopedTasks}
+                  team={scopedTeam}
+                  locations={scopedLocations}
+                  activeRole={activeRole}
                   onNavigate={handleNavigate}
+                  onUpdateTimelineMilestone={handleUpdateTimelineMilestone}
                 />
               )}
 
@@ -665,15 +675,7 @@ function AppContent() {
                 />
               )}
 
-              {currentScreen === 'TaskBoardActivity' && (
-                <TaskBoardActivityScreen
-                  tasks={scopedTasks}
-                  activities={scopedActivities}
-                  onNavigate={handleNavigate}
-                  onSelectTask={(task) => setSelectedTask(task)}
-                  selectedTaskId={selectedTask?.id}
-                />
-              )}
+
 
               {currentScreen === 'Settings' && (
                 <SettingsScreen onNavigate={handleNavigate} />
@@ -696,6 +698,7 @@ function AppContent() {
                 <NewTaskScreen
                   team={scopedTeam}
                   locations={scopedLocations}
+                  milestones={scopedTimeline}
                   onAddTask={handleAddTask}
                   onNavigate={handleNavigate}
                 />

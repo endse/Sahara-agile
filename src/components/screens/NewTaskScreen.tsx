@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ScreenId, Task, TeamMember, SiteLocation, TaskAttachment } from '../../types';
+import { ScreenId, Task, TeamMember, SiteLocation, TaskAttachment, TimelineMilestone } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { TaskAttachmentsManager } from '../TaskAttachmentsManager';
 
 interface NewTaskProps {
   team: TeamMember[];
   locations: SiteLocation[];
+  milestones?: TimelineMilestone[];
   onAddTask: (task: Task) => void;
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up' | 'slide_down') => void;
 }
@@ -13,6 +14,7 @@ interface NewTaskProps {
 export const NewTaskScreen: React.FC<NewTaskProps> = ({
   team,
   locations,
+  milestones = [],
   onAddTask,
   onNavigate
 }) => {
@@ -50,10 +52,15 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
   const [status, setStatus] = useState<Task['status']>('todo');
   const [assigneeId, setAssigneeId] = useState(combinedTeam[0]?.id || '');
   const [locationId, setLocationId] = useState(locations[0]?.id || '');
-  const [dueDate, setDueDate] = useState('Nov 15, 2026');
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split('T')[0];
+  });
   const [tagsInput, setTagsInput] = useState('Hydrology, Sensor');
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [projectId, setProjectId] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +92,8 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
       },
       updatedAt: 'Just now',
       timeSpent: '0h',
-      attachments: attachments
+      attachments: attachments,
+      projectId: projectId || undefined,
     };
 
     onAddTask(newTask);
@@ -218,7 +226,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#3D3028] uppercase">Target Due Date</label>
             <input
-              type="text"
+              type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
@@ -235,6 +243,25 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
               className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
             />
           </div>
+
+          {/* Link to Project / Milestone (Optional) */}
+          {milestones.length > 0 && (
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-xs font-bold text-[#3D3028] uppercase">Link to Project Phase (Optional)</label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none"
+              >
+                <option value="">— No project link (standalone task) —</option>
+                {milestones.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.phase}: {m.title} ({m.region})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Description */}
           <div className="md:col-span-2 space-y-1.5">

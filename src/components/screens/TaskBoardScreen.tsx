@@ -4,7 +4,7 @@ import { getTaskDeadlineInfo } from '../../lib/deadlineUtils';
 
 interface TaskBoardProps {
   tasks: Task[];
-  onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
+  onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up' | 'slide_down') => void;
   onSelectTask: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: Task['status']) => void;
   onApproveTaskStatus?: (taskId: string) => void;
