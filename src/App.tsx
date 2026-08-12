@@ -191,8 +191,9 @@ function AppContent() {
   };
 
   const handleAddTask = async (newTask: Task) => {
-    setTasks(prev => [newTask, ...prev]);
-    await saveTask(newTask);
+    const taskWithTeam = { ...newTask, teamId: userProfile?.teamId || '' };
+    setTasks(prev => [taskWithTeam, ...prev]);
+    await saveTask(taskWithTeam);
 
     // Log activity
     const newAct: Activity = {
@@ -258,7 +259,8 @@ function AppContent() {
       taskCount: 0,
       crewCount: 4,
       lead: projectData.lead,
-      temperature: '35°C'
+      temperature: '35°C',
+      teamId: userProfile?.teamId || ''
     };
     setLocations(prev => [newLoc, ...prev]);
     await saveLocation(newLoc);
@@ -273,7 +275,8 @@ function AppContent() {
       status: projectData.status === 'completed' ? 'completed' : projectData.status === 'active' ? 'in_progress' : 'upcoming',
       progress: projectData.status === 'completed' ? 100 : projectData.status === 'active' ? 10 : 0,
       lead: projectData.lead,
-      region: projectData.region
+      region: projectData.region,
+      teamId: userProfile?.teamId || ''
     };
     setTimeline(prev => [newMilestone, ...prev]);
     await saveTimelineMilestone(newMilestone);
@@ -307,8 +310,9 @@ function AppContent() {
   };
 
   const handleAddStory = async (newStory: UserStory) => {
-    setStories(prev => [newStory, ...prev]);
-    await saveStory(newStory);
+    const storyWithTeam = { ...newStory, teamId: userProfile?.teamId || '' };
+    setStories(prev => [storyWithTeam, ...prev]);
+    await saveStory(storyWithTeam);
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
