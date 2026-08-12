@@ -1,4 +1,3 @@
-import { INITIAL_ATTENDANCE, INITIAL_STORIES, INITIAL_TASKS } from '../data';
 import { AttendanceLog, UserStory, Task } from '../types';
 
 export interface ProductivityMetrics {

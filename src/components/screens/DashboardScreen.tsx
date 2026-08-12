@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScreenId, Task, Activity, TeamMember, SiteLocation } from '../../types';
+import { ScreenId, Task, Activity, TeamMember, SiteLocation, UserStory } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { DeadlineAlertSummary } from '../DeadlineAlertSummary';
 import { getTaskDeadlineInfo } from '../../lib/deadlineUtils';
@@ -9,6 +9,7 @@ interface DashboardProps {
   activities: Activity[];
   team: TeamMember[];
   locations: SiteLocation[];
+  stories?: UserStory[];
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   onSelectTask?: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: Task['status']) => void;
@@ -19,121 +20,179 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
   activities,
   team,
   locations,
+  stories = [],
   onNavigate,
   onSelectTask,
   onUpdateTaskStatus
 }) => {
-  const { userProfile, user, activeRole, switchActiveRole } = useAuth();
-  const rawName = userProfile?.displayName || user?.displayName || 'Operator';
+  const { userProfile, user, activeRole } = useAuth();
+  const rawName = userProfile?.displayName || user?.displayName || 'User';
   const displayName = rawName.split(' ')[0] || rawName;
 
-  const activeTasks = tasks.filter(t => t.status !== 'done');
-  const highPriorityTasks = tasks.filter(t => t.priority === 'high' || t.priority === 'urgent');
-
-  // Filter tasks assigned to current employee or field tasks
-  const myEmployeeTasks = tasks.filter(
-    (t) =>
-      t.assignee.name.toLowerCase().includes(displayName.toLowerCase()) ||
-      t.assignee.name === 'Amara Vance' ||
-      t.status === 'in_progress'
-  );
+  const activeTasks = tasks.filter((t) => t.status !== 'done');
+  const completedTasks = tasks.filter((t) => t.status === 'done');
+  const highPriorityTasks = tasks.filter((t) => t.priority === 'high' || t.priority === 'urgent');
 
   return (
     <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
-      {/* Role-Specific Welcome Banner */}
-      <div className={`border rounded-3xl p-6 lg:p-8 relative overflow-hidden shadow-sm transition-all ${
-        activeRole === 'Manager'
-          ? 'bg-[#F3E9DC] border-[#E5D5C0]'
-          : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
-      }`}>
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-[#D4A373]/15 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full border ${
+      {/* Welcome Banner */}
+      <div className="bg-white border border-[#E4DDD0] rounded-2xl p-6 lg:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1.5 max-w-2xl">
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                 activeRole === 'Manager'
-                  ? 'text-[#606C38] bg-[#FEFAE0] border-[#E9EDC9]'
-                  : 'text-amber-900 bg-amber-100 border-amber-300'
-              }`}>
-                {activeRole === 'Manager' ? 'Manager Control Mode' : 'Employee Field Workspace'}
-              </span>
-            </div>
-
-            <h1 className="font-headline text-3xl lg:text-4xl font-light text-[#2D241E]">
-              {activeRole === 'Manager'
-                ? `Good morning, ${displayName}. Field metrics are nominal.`
-                : `Welcome back, ${displayName}. Field shift ready.`}
-            </h1>
-
-            <p className="text-sm text-[#8B5E3C]">
-              {activeRole === 'Manager'
-                ? '6 active regional missions in progress across 5 sector hubs. Full oversight enabled.'
-                : 'Your daily field objectives, shift attendance tracker, and assigned mission tasks.'}
-            </p>
+                  ? 'text-[#A8793A] bg-[#C49A5A]/15 border-[#C49A5A]/30'
+                  : 'text-[#625C52] bg-[#FBF9F4] border-[#E4DDD0]'
+              }`}
+            >
+              {activeRole === 'Manager' ? 'Manager Workspace' : 'Team Workspace'}
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {activeRole === 'Manager' ? (
-              <button
-                onClick={() => onNavigate('NewProject', 'slide_up')}
-                className="px-4 py-2.5 bg-[#606C38] hover:bg-[#4d572d] text-white rounded-2xl text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
-              >
-                <span className="material-symbols-outlined text-base">add_location_alt</span>
-                <span>New Project</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => onNavigate('AttendanceLog', 'none')}
-                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm transition-colors"
-              >
-                <span className="material-symbols-outlined text-base">schedule</span>
-                <span>Log Shift / Clock In</span>
-              </button>
-            )}
+          <h1 className="text-2xl lg:text-3xl font-bold text-[#171512] tracking-tight">
+            Dashboard
+          </h1>
 
-            <button
-              onClick={() => onNavigate('TaskBoard', 'none')}
-              className="px-4 py-2.5 bg-[#3D3028] hover:bg-[#2D241E] text-white rounded-2xl text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
-            >
-              <span className="material-symbols-outlined text-base">view_kanban</span>
-              <span>My Task Board</span>
-            </button>
+          <p className="text-xs lg:text-sm text-[#625C52]">
+            Overview of your projects and team progress. Welcome back, {displayName}.
+          </p>
+        </div>
 
+        <div className="flex flex-wrap items-center gap-3">
+          {activeRole === 'Manager' ? (
             <button
-              onClick={() => onNavigate('ProjectMap', 'none')}
-              className="px-4 py-2.5 bg-[#FDF8F3] hover:bg-white text-[#3D3028] border border-[#E5D5C0] rounded-2xl text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
+              onClick={() => onNavigate('NewProject', 'slide_up')}
+              className="px-4 py-2.5 bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
             >
-              <span className="material-symbols-outlined text-base text-[#D4A373]">map</span>
-              <span>Site Map</span>
+              <span className="material-symbols-outlined text-base">add</span>
+              <span>+ New Project</span>
             </button>
-          </div>
+          ) : (
+            <button
+              onClick={() => onNavigate('AttendanceLog', 'none')}
+              className="px-4 py-2.5 bg-[#171613] hover:bg-[#24211C] text-[#F7F3EA] rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">schedule</span>
+              <span>Log Attendance</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => onNavigate('NewTask', 'slide_up')}
+            className="px-4 py-2.5 bg-[#FBF9F4] hover:bg-[#F7F3EA] text-[#171512] border border-[#E4DDD0] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base text-[#A8793A]">add_task</span>
+            <span>+ New Task</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('TaskBoard', 'none')}
+            className="px-4 py-2.5 bg-[#FBF9F4] hover:bg-[#F7F3EA] text-[#171512] border border-[#E4DDD0] rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base text-[#171613]">view_kanban</span>
+            <span>Task Board</span>
+          </button>
         </div>
       </div>
 
-      {/* Clean Production Empty State Banner */}
+      {/* Clean Empty State Banner if no tasks exist */}
       {tasks.length === 0 && (
-        <div className="bg-[#FDF8F3] border border-[#E5D5C0] rounded-3xl p-6 text-center space-y-4 shadow-sm">
-          <div className="w-12 h-12 bg-amber-500/10 text-amber-800 rounded-full flex items-center justify-center mx-auto">
-            <span className="material-symbols-outlined text-2xl">assignment_add</span>
+        <div className="bg-white border border-[#E4DDD0] rounded-2xl p-8 text-center space-y-4 shadow-xs">
+          <div className="w-12 h-12 bg-[#C49A5A]/15 text-[#A8793A] rounded-xl flex items-center justify-center mx-auto border border-[#C49A5A]/30">
+            <span className="material-symbols-outlined text-2xl">folder_open</span>
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-bold text-[#3D3028]">Production Workspace Ready</h3>
-            <p className="text-xs text-[#8B5E3C]">
-              No active tasks found in your assigned team scope. Dispatch a new task or initialize a project site to get started.
+            <h3 className="text-base font-bold text-[#171512]">No Projects or Tasks Yet</h3>
+            <p className="text-xs text-[#625C52]">
+              Create your first project or task to get started, or visit <strong className="text-[#171512]">/demo</strong> for sample Agile data.
             </p>
           </div>
-          <div className="flex items-center justify-center gap-3 pt-1">
+          <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={() => onNavigate('NewTask', 'slide_up')}
-              className="px-4 py-2 bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-sm">add</span>
-              <span>Dispatch Mission Task</span>
+              <span>Create Task</span>
+            </button>
+            <button
+              onClick={() => onNavigate('Demo', 'none')}
+              className="px-4 py-2 bg-[#FBF9F4] hover:bg-[#F7F3EA] text-[#171512] text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 border border-[#E4DDD0]"
+            >
+              <span className="material-symbols-outlined text-sm text-[#8A8378]">dataset</span>
+              <span>Load Demo Data (/demo)</span>
             </button>
           </div>
         </div>
       )}
+
+      {/* Restrained Stat Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Projects Card */}
+        <div
+          onClick={() => onNavigate('Projects', 'none')}
+          className="bg-white border border-[#E4DDD0] rounded-2xl p-5 shadow-xs space-y-2 hover:border-[#C49A5A] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-[#625C52]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8A8378]">Projects</span>
+            <span className="material-symbols-outlined text-lg text-[#171613] group-hover:text-[#C49A5A] transition-colors">folder_open</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-[#171512] tracking-tight">{locations.length}</span>
+            <span className="text-xs text-[#A8793A] font-semibold">Active</span>
+          </div>
+          <p className="text-xs text-[#625C52]">Tracked projects across workspace</p>
+        </div>
+
+        {/* User Stories Card */}
+        <div
+          onClick={() => onNavigate('UserStories', 'none')}
+          className="bg-white border border-[#E4DDD0] rounded-2xl p-5 shadow-xs space-y-2 hover:border-[#C49A5A] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-[#625C52]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8A8378]">User Stories</span>
+            <span className="material-symbols-outlined text-lg text-[#171613] group-hover:text-[#C49A5A] transition-colors">auto_stories</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-[#171512] tracking-tight">{stories.length}</span>
+            <span className="text-xs text-[#A8793A] font-semibold">Backlog Items</span>
+          </div>
+          <p className="text-xs text-[#625C52]">Feature stories mapped to project goals</p>
+        </div>
+
+        {/* Active Tasks Card */}
+        <div
+          onClick={() => onNavigate('TaskBoard', 'none')}
+          className="bg-white border border-[#E4DDD0] rounded-2xl p-5 shadow-xs space-y-2 hover:border-[#C49A5A] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-[#625C52]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8A8378]">Active Tasks</span>
+            <span className="material-symbols-outlined text-lg text-[#171613] group-hover:text-[#C49A5A] transition-colors">assignment</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-[#171512] tracking-tight">{activeTasks.length}</span>
+            <span className="text-xs text-[#A8793A] font-semibold">{highPriorityTasks.length} High Priority</span>
+          </div>
+          <p className="text-xs text-[#625C52]">Tasks currently in progress or review</p>
+        </div>
+
+        {/* Completed Tasks Card */}
+        <div
+          onClick={() => onNavigate('TaskBoard', 'none')}
+          className="bg-white border border-[#E4DDD0] rounded-2xl p-5 shadow-xs space-y-2 hover:border-[#C49A5A] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between text-[#625C52]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8A8378]">Completed Tasks</span>
+            <span className="material-symbols-outlined text-lg text-[#171613] group-hover:text-[#C49A5A] transition-colors">task_alt</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-[#171512] tracking-tight">{completedTasks.length}</span>
+            <span className="text-xs text-[#A8793A] font-semibold">Done</span>
+          </div>
+          <p className="text-xs text-[#625C52]">Successfully delivered sprint work</p>
+        </div>
+      </div>
 
       {/* Deadline Alert Summary Panel */}
       <DeadlineAlertSummary
@@ -143,161 +202,97 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         onUpdateTaskStatus={onUpdateTaskStatus}
       />
 
-      {/* Role-tailored Metrics Row */}
-      {activeRole === 'Manager' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Active Missions</span>
-              <span className="material-symbols-outlined text-lg text-[#D4A373]">assignment</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">{activeTasks.length}</span>
-              <span className="text-xs text-[#D4A373] font-semibold">+2 this week</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">{highPriorityTasks.length} high priority items requiring attention</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Site Locations</span>
-              <span className="material-symbols-outlined text-lg text-[#D4A373]">pin_drop</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">{locations.length}</span>
-              <span className="text-xs text-[#606C38] font-semibold">100% online</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">5 active operational hubs across Sector 1 to 5</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Solar Microgrid Output</span>
-              <span className="material-symbols-outlined text-lg text-[#D4A373]">solar_power</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">4.2 MW</span>
-              <span className="text-xs text-[#606C38] font-semibold">94% efficiency</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">Array 03 inverter recalibration in review</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Team Sync Status</span>
-              <span className="material-symbols-outlined text-lg text-[#D4A373]">group</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">{team.length}</span>
-              <span className="text-xs text-[#D4A373] font-semibold">2 in field</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">All telemetry channels active via SatCom</p>
-          </div>
-        </div>
-      ) : (
-        /* Employee View Specific Metrics */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border-2 border-amber-300 rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-amber-900">
-              <span className="text-xs font-bold tracking-wider uppercase">My Assigned Tasks</span>
-              <span className="material-symbols-outlined text-lg text-amber-600">task_alt</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">
-                {myEmployeeTasks.length}
-              </span>
-              <span className="text-xs text-amber-700 font-semibold">In Progress</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">Tasks directly assigned for field completion</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">My Today's Shift</span>
-              <span className="material-symbols-outlined text-lg text-emerald-600">schedule</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-2xl font-bold text-emerald-800">8h 15m</span>
-              <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                Clocked In
-              </span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">Station: Al-Kufra Hydro Site</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Task Completion</span>
-              <span className="material-symbols-outlined text-lg text-blue-600">analytics</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">88%</span>
-              <span className="text-xs text-emerald-700 font-semibold">On Target</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">7 of 8 sprint deliverables completed</p>
-          </div>
-
-          <div className="bg-white border border-[#F3E9DC] rounded-2xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-[#8B5E3C]">
-              <span className="text-xs font-bold tracking-wider uppercase">Field Safety Status</span>
-              <span className="material-symbols-outlined text-lg text-emerald-600">verified_user</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline text-3xl font-bold text-[#3D3028]">100%</span>
-              <span className="text-xs text-emerald-700 font-semibold">Nominal</span>
-            </div>
-            <p className="text-xs text-[#8B5E3C]">Zero safety incidents flagged</p>
-          </div>
-        </div>
-      )}
-
-      {/* Monthly Performance & Check-In/Out Analytics Quick Access Banner */}
-      <div className="bg-gradient-to-r from-[#F3E9DC] to-[#FDF8F3] border border-[#E5D5C0] rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#D4A373] text-white flex items-center justify-center shrink-0 shadow-xs">
-            <span className="material-symbols-outlined text-2xl">insights</span>
-          </div>
+      {/* Project Progress Section */}
+      <div className="bg-white border border-[#E4DDD0] rounded-2xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-headline text-lg font-bold text-[#3D3028]">
-              Monthly Employee Performance & Check-In Graphs
-            </h3>
-            <p className="text-xs text-[#8B5E3C] mt-0.5">
-              31-day shift clock trajectories, performance scores, attendance heatmaps, and burndown charts for August 2026.
-            </p>
+            <h3 className="font-bold text-lg text-[#171512]">Project Progress</h3>
+            <p className="text-xs text-[#625C52]">Real-time status and delivery completion across active projects</p>
           </div>
+          <button
+            onClick={() => onNavigate('Projects', 'none')}
+            className="text-xs font-semibold text-[#A8793A] hover:text-[#171512] flex items-center gap-1 transition-colors"
+          >
+            <span>View All Projects</span>
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => onNavigate('PerformanceAnalytics', 'none')}
-          className="px-5 py-2.5 bg-[#3D3028] hover:bg-[#2D241E] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-xs transition-colors shrink-0"
-        >
-          <span className="material-symbols-outlined text-base">bar_chart</span>
-          <span>Open Full Analytics Dashboard</span>
-        </button>
+        {locations.length === 0 ? (
+          <p className="text-xs text-[#8A8378] italic py-4 text-center">No projects registered yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {locations.slice(0, 3).map((proj) => {
+              const projTasks = tasks.filter((t) => t.projectId === proj.id || t.region === proj.region);
+              const doneCount = projTasks.filter((t) => t.status === 'done').length;
+              const totalCount = projTasks.length || proj.taskCount || 1;
+              const pct = Math.round((doneCount / totalCount) * 100) || (proj.status === 'completed' ? 100 : 50);
+
+              return (
+                <div
+                  key={proj.id}
+                  onClick={() => onNavigate('Projects', 'none')}
+                  className="p-4 rounded-xl border border-[#E4DDD0] bg-[#FBF9F4] hover:bg-[#F7F3EA] transition-all cursor-pointer space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#625C52] bg-white px-2 py-0.5 rounded border border-[#E4DDD0]">
+                      {proj.id}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        proj.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : proj.status === 'warning'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-[#C49A5A]/20 text-[#A8793A]'
+                      }`}
+                    >
+                      {proj.status}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-[#171512] truncate">{proj.name}</h4>
+                    <p className="text-xs text-[#625C52]">Lead: {proj.lead}</p>
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-xs font-semibold text-[#171512]">
+                      <span>Completion</span>
+                      <span>{pct}%</span>
+                    </div>
+                    <div className="w-full bg-[#E4DDD0] h-2 rounded-full overflow-hidden">
+                      <div className="bg-[#C49A5A] h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Main Grid Content */}
+      {/* Main Grid: Priority Tasks & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Columns: Priority Tasks & Map Preview */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Priority Task Focus */}
-          <div className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 lg:p-8 shadow-sm space-y-4">
+        {/* Left 2 Columns: Priority Tasks */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white border border-[#E4DDD0] rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-headline text-2xl font-semibold text-[#3D3028]">Active Task Priority Overview</h3>
-                <p className="text-xs text-[#8B5E3C]">Key field objectives prioritized by geographical urgency</p>
+                <h3 className="font-bold text-lg text-[#171512]">Task Priority Overview</h3>
+                <p className="text-xs text-[#625C52]">Active tasks requiring sprint focus</p>
               </div>
               <button
                 onClick={() => onNavigate('TaskBoard', 'none')}
-                className="text-xs font-semibold text-[#D4A373] hover:text-[#8B5E3C] flex items-center gap-1 transition-colors"
+                className="text-xs font-semibold text-[#A8793A] hover:text-[#171512] flex items-center gap-1 transition-colors"
               >
-                <span>View All Tasks</span>
+                <span>View Task Board</span>
                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
             </div>
 
             <div className="space-y-3">
-              {tasks.slice(0, 4).map((task) => {
+              {tasks.slice(0, 5).map((task) => {
                 const info = getTaskDeadlineInfo(task);
                 return (
                   <div
@@ -306,38 +301,33 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
                       if (onSelectTask) onSelectTask(task);
                       onNavigate('TaskBoardActivity', 'push');
                     }}
-                    className={`bg-[#FDF8F3] hover:bg-[#F3E9DC]/60 border rounded-2xl p-4 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      info.isNearingDeadline ? 'border-amber-400/80 bg-amber-500/5 shadow-2xs' : 'border-[#F3E9DC]'
+                    className={`bg-[#FBF9F4] hover:bg-[#F7F3EA] border rounded-xl p-4 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      info.isNearingDeadline ? 'border-[#C49A5A] bg-[#C49A5A]/10' : 'border-[#E4DDD0]'
                     }`}
                   >
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3E9DC] text-[#5C4D42]">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#171512] border border-[#E4DDD0]">
                           {task.code}
                         </span>
                         <span
-                          className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                             task.priority === 'urgent'
-                              ? 'bg-[#BC4749]/15 text-[#BC4749]'
+                              ? 'bg-red-100 text-red-700'
                               : task.priority === 'high'
-                              ? 'bg-[#D4A373]/20 text-[#8B5E3C]'
-                              : 'bg-[#FEFAE0] text-[#606C38] border border-[#E9EDC9]'
+                              ? 'bg-[#C49A5A]/20 text-[#A8793A]'
+                              : 'bg-[#E4DDD0] text-[#625C52]'
                           }`}
                         >
                           {task.priority}
                         </span>
-
-                        {/* Yellow Status Indicator for Nearing Deadline */}
                         {info.isNearingDeadline && (
-                          <span className={`text-[10px] ${info.badgeClasses} px-2 py-0.5 rounded-full flex items-center gap-1`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span>{info.statusLabel}</span>
+                          <span className="text-[10px] bg-[#C49A5A]/20 text-[#A8793A] font-bold px-2 py-0.5 rounded-full border border-[#C49A5A]/30">
+                            {info.statusLabel}
                           </span>
                         )}
-
-                        <span className="text-xs text-[#8B5E3C]">{task.region}</span>
                       </div>
-                      <h4 className="font-semibold text-sm text-[#3D3028]">{task.title}</h4>
+                      <h4 className="font-semibold text-sm text-[#171512]">{task.title}</h4>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -345,15 +335,15 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
                         <img
                           src={task.assignee.avatar}
                           alt={task.assignee.name}
-                          className="w-7 h-7 rounded-full object-cover border-2 border-[#D4A373]"
+                          className="w-7 h-7 rounded-full object-cover border border-[#C49A5A]"
                         />
-                        <span className="text-xs text-[#5C4D42] hidden md:inline">{task.assignee.name}</span>
+                        <span className="text-xs text-[#625C52] hidden md:inline">{task.assignee.name}</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs font-bold text-[#3D3028]">{task.progress}%</div>
-                        <div className="w-16 bg-[#E5D5C0] h-1.5 rounded-full overflow-hidden mt-1">
+                        <div className="text-xs font-bold text-[#171512]">{task.progress}%</div>
+                        <div className="w-16 bg-[#E4DDD0] h-1.5 rounded-full overflow-hidden mt-1">
                           <div
-                            className="bg-[#D4A373] h-full rounded-full transition-all duration-500"
+                            className="bg-[#C49A5A] h-full rounded-full transition-all duration-500"
                             style={{ width: `${task.progress}%` }}
                           />
                         </div>
@@ -364,156 +354,63 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
               })}
             </div>
           </div>
-
-          {/* Quick Map & Timeline Widgets */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Map Snippet */}
-            <div className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-headline text-xl font-semibold text-[#3D3028]">Project Map</h4>
-                <button
-                  onClick={() => onNavigate('ProjectMap', 'none')}
-                  className="text-xs font-semibold text-[#D4A373] hover:underline"
-                >
-                  Full Map
-                </button>
-              </div>
-              <div
-                onClick={() => onNavigate('ProjectMap', 'none')}
-                className="relative h-40 bg-[#F3E9DC] rounded-2xl overflow-hidden cursor-pointer group border border-[#E5D5C0]"
-              >
-                <div
-                  className="absolute inset-0 bg-cover bg-center opacity-80 group-hover:scale-105 transition-transform duration-500"
-                  style={{
-                    backgroundImage:
-                      'url("https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80")'
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#3D3028]/80 via-transparent to-transparent flex items-end p-3">
-                  <div className="text-white text-xs font-medium flex items-center justify-between w-full">
-                    <span>5 Field Hubs Geotagged</span>
-                    <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline Snippet */}
-            <div className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-headline text-xl font-semibold text-[#3D3028]">Milestone Tracker</h4>
-                <button
-                  onClick={() => onNavigate('ProjectTimeline', 'none')}
-                  className="text-xs font-semibold text-[#D4A373] hover:underline"
-                >
-                  Timeline
-                </button>
-              </div>
-              <div className="space-y-2.5">
-                <div className="p-3 bg-[#FDF8F3] rounded-2xl border border-[#F3E9DC]">
-                  <div className="flex justify-between text-xs font-bold text-[#3D3028]">
-                    <span>Phase 2: Solar Array 3</span>
-                    <span className="text-[#D4A373]">68%</span>
-                  </div>
-                  <p className="text-[11px] text-[#8B5E3C]">Ends Nov 15, 2026</p>
-                </div>
-                <div className="p-3 bg-[#FDF8F3] rounded-2xl border border-[#F3E9DC]">
-                  <div className="flex justify-between text-xs font-bold text-[#3D3028]">
-                    <span>Phase 3: Sand Shield Testing</span>
-                    <span className="text-[#8B5E3C]">15%</span>
-                  </div>
-                  <p className="text-[11px] text-[#8B5E3C]">Starts Nov 01, 2026</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Right Column: Activity Feed & Team Sync */}
-        <div className="space-y-8">
-          {/* Live Activity Stream */}
-          <div className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 shadow-sm space-y-4">
+        {/* Right Column: Recent Activity Feed & Team Directory */}
+        <div className="space-y-6">
+          {/* Recent Activity Stream */}
+          <div className="bg-white border border-[#E4DDD0] rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-headline text-xl font-semibold text-[#3D3028]">Live Field Activity</h3>
+              <h3 className="font-bold text-base text-[#171512]">Recent Activity</h3>
               <button
                 onClick={() => onNavigate('TaskBoardActivity', 'push')}
-                className="text-xs font-semibold text-[#D4A373] hover:underline"
+                className="text-xs font-semibold text-[#A8793A] hover:underline"
               >
-                Activity Feed
+                View All
               </button>
             </div>
 
             <div className="space-y-4">
               {activities.slice(0, 4).map((act) => (
-                <div key={act.id} className="flex items-start gap-3 text-xs border-b border-[#F3E9DC] pb-3 last:border-0 last:pb-0">
-                  <img src={act.avatar} alt={act.user} className="w-8 h-8 rounded-full object-cover mt-0.5 border border-[#D4A373]" />
-                  <div className="space-y-1 flex-1">
-                    <p className="text-[#3D3028] leading-tight">
-                      <span className="font-semibold">{act.user}</span> {act.action}{' '}
-                      <span className="font-medium text-[#D4A373]">{act.target}</span>
+                <div key={act.id} className="flex items-start gap-3 text-xs border-b border-[#E4DDD0] pb-3 last:border-0 last:pb-0">
+                  <img src={act.avatar} alt={act.user} className="w-7 h-7 rounded-full object-cover mt-0.5 border border-[#C49A5A]" />
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <p className="text-[#625C52] leading-tight">
+                      <span className="font-bold text-[#171512]">{act.user}</span> {act.action}{' '}
+                      <span className="font-semibold text-[#A8793A]">{act.target}</span>
                     </p>
-                    {act.detail && <p className="text-[11px] text-[#8B5E3C] italic">{act.detail}</p>}
-                    <span className="text-[10px] text-[#8B5E3C]/80">{act.time}</span>
+                    {act.detail && <p className="text-[11px] text-[#8A8378] truncate">{act.detail}</p>}
+                    <span className="text-[10px] text-[#8A8378] block">{act.time}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Team Sync Summary Card - matching Team Sync block from design */}
-          <div className="bg-[#8B5E3C] rounded-[32px] p-6 text-white shadow-sm space-y-4">
-            <h3 className="font-headline text-xl font-normal">Team Sync Room</h3>
-            <p className="text-xs opacity-90 leading-relaxed">
-              Daily {userProfile?.teamName || 'Global'} standup meeting scheduled for today at 2:00 PM (PT)
-            </p>
-            <div className="flex items-center justify-between pt-2">
-              <button
-                onClick={() => onNavigate('TeamSync', 'none')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full text-xs font-medium transition-colors"
-              >
-                Join Room
-              </button>
-              <span className="text-xs opacity-75 italic">
-                {team.filter(m => m.status === 'active' || m.status === 'in_field').length} members ready
-              </span>
-            </div>
-          </div>
-
-          {/* Field Team List */}
-          <div className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 shadow-sm space-y-4">
+          {/* Team Members List */}
+          <div className="bg-white border border-[#E4DDD0] rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-headline text-xl font-semibold text-[#3D3028]">Field Team</h3>
+              <h3 className="font-bold text-base text-[#171512]">Team Roster</h3>
               <button
                 onClick={() => onNavigate('TeamSync', 'none')}
-                className="text-xs font-semibold text-[#D4A373] hover:underline"
+                className="text-xs font-semibold text-[#A8793A] hover:underline"
               >
-                Team Sync
+                Team Directory
               </button>
             </div>
 
             <div className="space-y-3">
-              {team.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-[#FDF8F3] rounded-2xl border border-[#F3E9DC]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative">
-                      <img src={member.avatar} alt={member.name} className="w-8 h-8 rounded-full object-cover" />
-                      <span
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                          member.status === 'active'
-                            ? 'bg-[#606C38]'
-                            : member.status === 'in_field'
-                            ? 'bg-[#D4A373]'
-                            : 'bg-stone-400'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-[#3D3028]">{member.name}</p>
-                      <p className="text-[11px] text-[#8B5E3C]">{member.role}</p>
+              {team.slice(0, 4).map((member) => (
+                <div key={member.id} className="flex items-center justify-between p-2.5 bg-[#FBF9F4] rounded-xl border border-[#E4DDD0]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img src={member.avatar} alt={member.name} className="w-8 h-8 rounded-full object-cover shrink-0 border border-[#C49A5A]" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#171512] truncate">{member.name}</p>
+                      <p className="text-[11px] text-[#625C52] truncate">{member.role}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-[#F3E9DC] text-[#5C4D42]">
-                    {member.status === 'in_field' ? 'In Field' : member.status === 'active' ? 'Online' : 'Busy'}
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E4DDD0] text-[#171512] shrink-0">
+                    {member.status}
                   </span>
                 </div>
               ))}

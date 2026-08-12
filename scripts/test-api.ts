@@ -141,8 +141,8 @@ async function runTests() {
     console.log(`   ✅ GET /api/projects 200 | Count: ${projects.body.count}`);
 
     const newProj = await request('/api/projects', 'POST', {
-      name: 'Tibesti Renewable Relay Hub',
-      region: 'Sector 9 - Highlands',
+      name: 'Cloud Edge Relay Cluster',
+      region: 'Sector 3 - Kubernetes Cluster',
       lead: 'Zainab Nouri',
     }, cookieHeader);
     assert(newProj.status === 201, `POST /api/projects expected 201, got ${newProj.status}`);

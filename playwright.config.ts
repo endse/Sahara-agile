@@ -22,9 +22,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run start',
+    command: 'npm run build:local && npm run start',
     url: 'http://localhost:3000/api/health',
     reuseExistingServer: true,
-    timeout: 120000,
+    timeout: 180000,
   },
 });

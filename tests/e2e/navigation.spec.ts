@@ -1,4 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function expandGroup(page: Page, name: string) {
+  const groupBtn = page.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).first();
+  await groupBtn.click();
+}
 
 test.describe('Application Navigation & Core Header Specs', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,15 +25,18 @@ test.describe('Application Navigation & Core Header Specs', () => {
     await page.click('a[href="#UserStories"]');
     await expect(page.getByRole('heading', { name: /User Stories/i }).first()).toBeVisible();
 
-    // 3. Navigate to Attendance & Clock
+    // 3. Navigate to Attendance & Clock (TEAM group)
+    await expandGroup(page, 'TEAM');
     await page.click('a[href="#AttendanceLog"]');
     await expect(page.getByRole('heading', { name: /Attendance/i }).first()).toBeVisible();
 
-    // 4. Navigate to Project Map
+    // 4. Navigate to Project Map (WORKSPACE group)
+    await expandGroup(page, 'WORKSPACE');
     await page.click('a[href="#ProjectMap"]');
     await expect(page.getByRole('heading', { name: /Project Map|Project Locations/i }).first()).toBeVisible();
 
-    // 5. Navigate to Async Reports
+    // 5. Navigate to Async Reports (INSIGHTS group)
+    await expandGroup(page, 'INSIGHTS');
     await page.click('a[href="#AsyncReports"]');
     await expect(page.getByRole('heading', { name: /Async Reports|Redis Queue/i }).first()).toBeVisible();
   });

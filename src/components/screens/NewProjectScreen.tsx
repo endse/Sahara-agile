@@ -11,7 +11,6 @@ interface NewProjectScreenProps {
     region: string;
     lead: string;
     status: 'planned' | 'active' | 'completed';
-    assignedMemberIds?: string[];
   }) => void;
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
 }
@@ -31,18 +30,9 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('2026-09-01');
   const [endDate, setEndDate] = useState('2026-12-31');
-  const [region, setRegion] = useState('');
-  const [lead, setLead] = useState(team[0]?.name || '');
+  const [region, setRegion] = useState('Sector 1 - Core Platform');
+  const [lead, setLead] = useState(team[0]?.name || 'Amara Vance');
   const [status, setStatus] = useState<'planned' | 'active' | 'completed'>('active');
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
-    team.slice(0, 2).map((m) => m.id)
-  );
-
-  const toggleMember = (memberId: string) => {
-    setSelectedMemberIds((prev) =>
-      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
-    );
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,125 +53,107 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
       region,
       lead,
       status,
-      assignedMemberIds: selectedMemberIds,
     });
 
-    onNavigate('ProjectTimeline', 'none');
+    onNavigate('Projects', 'none');
   };
 
   return (
-    <div className="min-h-screen bg-[#FDF8F3] p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#F7F3EA] p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-[#E5D5C0] pb-4">
+      <div className="flex items-center justify-between border-b border-[#E4DDD0] pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#606C38] text-white flex items-center justify-center shadow-xs">
-            <span className="material-symbols-outlined text-2xl">add_location_alt</span>
+          <div className="w-10 h-10 rounded-xl bg-[#C49A5A] text-[#0D0D0B] flex items-center justify-center shadow-xs">
+            <span className="material-symbols-outlined text-xl">add_location_alt</span>
           </div>
           <div>
-            <h1 className="font-headline text-2xl lg:text-3xl font-light text-[#2D241E]">
-              Create New Project - Sahara
-            </h1>
-            <p className="text-xs text-[#8B5E3C]">
-              Register field site operations and assign team members & director
-            </p>
+            <h1 className="text-2xl font-bold text-[#171512]">New Project</h1>
+            <p className="text-xs text-[#625C52]">Register a new project workspace and assign leads</p>
           </div>
         </div>
 
         <button
-          onClick={() => onNavigate('ProjectTimeline', 'none')}
-          className="p-2.5 rounded-2xl bg-[#FDF8F3] hover:bg-white text-[#5C4D42] transition-colors border border-[#E5D5C0] flex items-center gap-2 text-xs font-medium"
+          onClick={() => onNavigate('Projects', 'none')}
+          className="p-2 rounded-xl bg-white hover:bg-[#FBF9F4] text-[#625C52] transition-colors border border-[#E4DDD0] flex items-center gap-2 text-xs font-semibold"
         >
-          <span className="material-symbols-outlined text-lg">close</span>
+          <span className="material-symbols-outlined text-base">close</span>
           <span className="hidden sm:inline">Cancel</span>
         </button>
       </div>
 
       {/* Main Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white border border-[#F3E9DC] rounded-[32px] p-6 lg:p-8 space-y-6 shadow-sm"
-      >
+      <form onSubmit={handleSubmit} className="bg-white border border-[#E4DDD0] rounded-2xl p-6 lg:p-8 space-y-6 shadow-xs">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Project Name */}
           <div className="md:col-span-2 space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
+            <label htmlFor="project-name" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
               Project Name *
             </label>
             <input
+              id="project-name"
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Subsurface Aquifer Expansion & Solar Desalination Array"
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-5 py-3 text-sm font-semibold text-[#3D3028] outline-none transition-colors"
+              placeholder="e.g. Real-Time Telemetry & API Websocket Stream"
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-semibold text-[#171512] outline-none transition-colors"
             />
           </div>
 
-          {/* Description */}
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
-              Project Brief / Objectives
-            </label>
-            <textarea
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief overview of operational scope, milestones, and target outcomes..."
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-2xl p-4 text-xs font-medium text-[#3D3028] outline-none transition-colors"
-            />
-          </div>
-
-          {/* Start Date */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
+            <label htmlFor="project-start-date" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
               Start Date *
             </label>
             <input
+              id="project-start-date"
               type="date"
               required
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none transition-colors"
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-medium text-[#171512] outline-none transition-colors"
             />
           </div>
 
-          {/* End Date */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
-              Target Completion Date *
+            <label htmlFor="project-end-date" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
+              End Date *
             </label>
             <input
+              id="project-end-date"
               type="date"
               required
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none transition-colors"
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-medium text-[#171512] outline-none transition-colors"
             />
           </div>
 
-          {/* Region / Sector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
-              Geographic Region / Sector
-            </label>
-            <input
-              type="text"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="e.g. Sector 4 - East Oasis"
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none transition-colors"
-            />
-          </div>
-
-          {/* Project Lead */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
-              Assigned Project Director
+            <label htmlFor="project-region" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
+              Region / Sector
             </label>
             <select
+              id="project-region"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-medium text-[#171512] outline-none transition-colors"
+            >
+              <option value="Sector 1 - Core Platform">Sector 1 - Core Platform</option>
+              <option value="Sector 2 - ML Pipeline">Sector 2 - ML Pipeline</option>
+              <option value="Sector 3 - Kubernetes Cluster">Sector 3 - Kubernetes Cluster</option>
+              <option value="Sector 4 - Cybersecurity">Sector 4 - Cybersecurity</option>
+              <option value="Sector 5 - Frontend UI/UX">Sector 5 - Frontend UI/UX</option>
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="project-lead" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
+              Project Lead
+            </label>
+            <select
+              id="project-lead"
               value={lead}
               onChange={(e) => setLead(e.target.value)}
-              className="w-full bg-[#FDF8F3] border border-[#E5D5C0] focus:border-[#D4A373] rounded-full px-4 py-2.5 text-xs font-medium text-[#3D3028] outline-none transition-colors"
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-medium text-[#171512] outline-none transition-colors"
             >
               {team.map((m) => (
                 <option key={m.id} value={m.name}>
@@ -191,21 +163,20 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
             </select>
           </div>
 
-          {/* Status */}
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider">
-              Initial Phase Status
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-xs font-bold text-[#171512] uppercase tracking-wider">
+              Initial Status
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-wrap gap-2">
               {(['planned', 'active', 'completed'] as const).map((st) => (
                 <button
-                  key={st}
                   type="button"
+                  key={st}
                   onClick={() => setStatus(st)}
-                  className={`p-3 rounded-2xl border text-xs font-bold capitalize transition-all ${
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-colors ${
                     status === st
-                      ? 'bg-[#606C38] text-white border-[#606C38] shadow-2xs'
-                      : 'bg-[#FDF8F3] text-[#5C4D42] border-[#E5D5C0] hover:bg-white'
+                      ? 'bg-[#C49A5A] text-[#0D0D0B] shadow-xs'
+                      : 'bg-[#FBF9F4] text-[#625C52] hover:bg-[#F7F3EA] border border-[#E4DDD0]'
                   }`}
                 >
                   {st}
@@ -214,62 +185,35 @@ export const NewProjectScreen: React.FC<NewProjectScreenProps> = ({
             </div>
           </div>
 
-          {/* Assign Initial Team Members */}
-          <div className="md:col-span-2 space-y-2 pt-2 border-t border-[#F3E9DC]">
-            <label className="text-xs font-bold text-[#3D3028] uppercase tracking-wider block">
-              Assign Initial Team Members ({selectedMemberIds.length} selected)
+          <div className="md:col-span-2 space-y-1.5">
+            <label htmlFor="project-overview" className="text-xs font-bold text-[#171512] uppercase tracking-wider">
+              Project Overview & Objectives
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
-              {team.map((member) => {
-                const isSelected = selectedMemberIds.includes(member.id);
-                return (
-                  <div
-                    key={member.id}
-                    onClick={() => toggleMember(member.id)}
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'bg-[#FEFAE0] border-[#E9EDC9] text-[#606C38]'
-                        : 'bg-[#FDF8F3] border-[#E5D5C0] text-[#5C4D42] hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-8 h-8 rounded-full object-cover border border-white"
-                      />
-                      <div>
-                        <span className="font-bold text-xs block text-[#2D241E]">{member.name}</span>
-                        <span className="text-[10px] text-[#8B5E3C]">{member.role}</span>
-                      </div>
-                    </div>
-
-                    <span className="material-symbols-outlined text-lg">
-                      {isSelected ? 'check_circle' : 'radio_button_unchecked'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <textarea
+              id="project-overview"
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Outline project operational scope, deliverables, and timelines..."
+              className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl p-3 text-xs font-medium text-[#171512] outline-none transition-colors"
+            />
           </div>
         </div>
 
-        {/* Submit Bar */}
-        <div className="pt-4 border-t border-[#F3E9DC] flex items-center justify-end gap-3">
+        <div className="pt-4 border-t border-[#E4DDD0] flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={() => onNavigate('ProjectTimeline', 'none')}
-            className="px-6 py-3 rounded-full bg-[#FDF8F3] hover:bg-[#F3E9DC] text-[#5C4D42] text-xs font-bold transition-colors"
+            onClick={() => onNavigate('Projects', 'none')}
+            className="px-4 py-2.5 rounded-xl bg-[#FBF9F4] text-[#625C52] text-xs font-semibold hover:bg-[#F7F3EA] border border-[#E4DDD0] transition-colors"
           >
             Cancel
           </button>
-
           <button
             type="submit"
-            className="px-8 py-3 rounded-full bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 hover:scale-[1.02]"
+            className="px-5 py-2.5 rounded-xl bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-base">rocket_launch</span>
-            <span>Launch Project</span>
+            <span className="material-symbols-outlined text-base">check</span>
+            <span>Save Project</span>
           </button>
         </div>
       </form>

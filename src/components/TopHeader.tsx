@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ScreenId, TransitionType, Task } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { ScreenId, TransitionType, Task, AppNotification } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getNearingDeadlineTasks } from '../lib/deadlineUtils';
 
@@ -9,12 +9,13 @@ interface TopHeaderProps {
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
   onOpenMobileMenu?: () => void;
   onOpenSecurityModal?: () => void;
+  onOpenWalkthrough?: () => void;
   tasks?: Task[];
-  allTasks?: Task[];
   onSelectTask?: (task: Task) => void;
-  onApproveTaskStatus?: (taskId: string) => void;
-  onRejectTaskStatus?: (taskId: string) => void;
   rightActions?: React.ReactNode;
+  managedSector?: string;
+  onSelectManagedSector?: (sector: string) => void;
+  notifications?: AppNotification[];
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -23,28 +24,49 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onNavigate,
   onOpenMobileMenu,
   onOpenSecurityModal,
+  onOpenWalkthrough,
   tasks = [],
-  allTasks = tasks,
   onSelectTask,
-  onApproveTaskStatus,
-  onRejectTaskStatus,
   rightActions,
+  notifications = [],
 }) => {
   const { user, userProfile, activeRole, switchActiveRole, signOutUser } = useAuth();
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const nearingItems = getNearingDeadlineTasks(tasks);
-  const pendingApprovals = allTasks.filter((t) => t.approvalStatus === 'pending_approval');
-  const totalNotifications = nearingItems.length + (activeRole === 'Manager' ? pendingApprovals.length : 0);
+  const alertCount = nearingItems.length + notifications.length;
+
+  const notificationIcon = (type: AppNotification['type']) => {
+    switch (type) {
+      case 'task_assigned': return 'person_add';
+      case 'task_created': return 'add_task';
+      case 'story_created': return 'auto_stories';
+      case 'project_created': return 'account_tree';
+      case 'status_changed': return 'sync';
+      default: return 'notifications';
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FDF8F3]/90 backdrop-blur-md border-b border-[#E5D5C0] px-4 lg:px-8 py-4 flex items-center justify-between gap-4">
-      {/* Title & Mobile Menu Toggle */}
+    <header className="sticky top-0 z-30 bg-[#FBF9F4]/90 backdrop-blur-md border-b border-[#E4DDD0] px-4 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+      {/* Page Title & Context */}
       <div className="flex items-center gap-3">
         {onOpenMobileMenu && (
           <button
             onClick={onOpenMobileMenu}
-            className="lg:hidden p-2 text-[#5C4D42] hover:bg-[#E5D5C0] rounded-2xl transition-colors"
+            className="lg:hidden p-2 text-[#625C52] hover:bg-[#E4DDD0]/60 rounded-xl transition-colors"
             aria-label="Open Navigation"
           >
             <span className="material-symbols-outlined">menu</span>
@@ -52,263 +74,285 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         )}
 
         <div>
-          <h2 className="font-headline text-2xl lg:text-3xl font-light text-[#2D241E] tracking-tight">{title}</h2>
-          {subtitle && <p className="text-xs text-[#8B5E3C] hidden sm:block">{subtitle}</p>}
+          <h2 className="font-bold text-xl lg:text-2xl text-[#171512] tracking-tight">{title}</h2>
+          {subtitle && <p className="text-xs text-[#625C52] hidden sm:block mt-0.5">{subtitle}</p>}
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2.5 max-w-full">
-        {/* Deadline Alerts Notification Bell Dropdown */}
+      {/* Header Action Controls */}
+      <div className="flex items-center justify-end gap-2.5">
+        {/* Deadline Alerts Notification Bell */}
         <div className="relative">
           <button
             onClick={() => setIsAlertsOpen(!isAlertsOpen)}
-            className={`p-2 rounded-full transition-all relative flex items-center justify-center ${
-              totalNotifications > 0
-                ? 'bg-amber-500/20 text-amber-900 border border-amber-500/40 hover:bg-amber-500/30'
-                : 'text-[#5C4D42] hover:bg-[#F3E9DC]'
+            className={`p-2 rounded-xl transition-all relative flex items-center justify-center ${
+              alertCount > 0
+                ? 'bg-[#C49A5A]/15 text-[#A8793A] border border-[#C49A5A]/30 hover:bg-[#C49A5A]/25'
+                : 'text-[#625C52] hover:bg-[#E4DDD0]/60'
             }`}
-            title={`${totalNotifications} active notifications`}
+            title={`${alertCount} notifications`}
           >
             <span className="material-symbols-outlined text-xl">notifications</span>
-            {totalNotifications > 0 && (
-              <>
-                <span className="absolute -top-1 -right-1 bg-yellow-400 text-stone-950 font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center border border-yellow-600 shadow-xs">
-                  {totalNotifications}
-                </span>
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-ping opacity-75" />
-              </>
+            {alertCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#C49A5A] text-[#0D0D0B] font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow-2xs">
+                {alertCount}
+              </span>
             )}
           </button>
 
-          {/* Alerts Popover Menu */}
+          {/* Alerts Popover */}
           {isAlertsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1A1411] text-white border border-amber-500/30 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#171613] border border-[#302B24] text-[#F7F3EA] rounded-2xl shadow-xl p-4 z-50 space-y-3">
+              <div className="flex items-center justify-between border-b border-[#302B24] pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-amber-400 text-lg">notifications_active</span>
-                  <h4 className="font-bold text-sm text-white">Notifications & Approvals</h4>
+                  <span className="material-symbols-outlined text-[#C49A5A] text-lg">notifications_active</span>
+                  <h4 className="font-bold text-sm text-[#F7F3EA]">Deadline Notifications</h4>
                 </div>
-                <span className="bg-amber-400 text-stone-950 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {totalNotifications} Items
+                <span className="bg-[#C49A5A]/20 text-[#D6B77A] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#C49A5A]/30">
+                  {nearingItems.length} Active
                 </span>
               </div>
 
-              {/* Manager Pending Approvals Section */}
-              {activeRole === 'Manager' && pendingApprovals.length > 0 && (
-                <div className="space-y-2 border-b border-white/10 pb-3">
-                  <div className="flex items-center justify-between text-xs text-amber-400 font-bold">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">rate_review</span>
-                      <span>Pending Task Approvals ({pendingApprovals.length})</span>
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                    {pendingApprovals.map((task) => (
-                      <div
-                        key={task.id}
-                        className="p-2.5 bg-[#2A1E17] border border-amber-500/30 rounded-xl space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-700">
-                            {task.code}
-                          </span>
-                          <span className="text-[10px] bg-amber-400 text-stone-950 font-bold px-2 py-0.5 rounded-full uppercase">
-                            Req: {task.pendingStatus?.replace('_', ' ')}
-                          </span>
-                        </div>
-                        <h5 className="font-semibold text-xs text-stone-200 truncate">{task.title}</h5>
-                        <p className="text-[10px] text-stone-400">
-                          Requested by {task.statusRequestedBy || task.assignee.name}
-                        </p>
-
-                        {onApproveTaskStatus && onRejectTaskStatus && (
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              onClick={() => {
-                                onApproveTaskStatus(task.id);
-                              }}
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-2 rounded-lg text-[10px] shadow-xs flex items-center justify-center gap-1"
-                            >
-                              <span className="material-symbols-outlined text-xs">check</span>
-                              <span>Approve</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                onRejectTaskStatus(task.id);
-                              }}
-                              className="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700 font-bold py-1 px-2 rounded-lg text-[10px] flex items-center justify-center gap-1"
-                            >
-                              <span className="material-symbols-outlined text-xs">close</span>
-                              <span>Reject</span>
-                            </button>
-                          </div>
-                        )}
+              {nearingItems.length === 0 ? (
+                <p className="text-xs text-[#8A8378] py-4 text-center">
+                  No task deadlines nearing in the next 7 days.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                  {nearingItems.map(({ task, info }) => (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        if (onSelectTask) onSelectTask(task);
+                        onNavigate('Dashboard', 'none');
+                        setIsAlertsOpen(false);
+                      }}
+                      className="p-2.5 bg-[#24211C] hover:bg-[#302B24] rounded-xl border border-[#302B24] cursor-pointer transition-colors space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-mono text-[#D6B77A] font-bold bg-[#171613] px-1.5 py-0.5 rounded border border-[#302B24]">
+                          {task.code}
+                        </span>
+                        <span className="text-[10px] bg-[#C49A5A]/20 text-[#D6B77A] font-bold px-2 py-0.5 rounded-full border border-[#C49A5A]/30">
+                          {info.statusLabel}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <h5 className="font-semibold text-xs text-[#F7F3EA] truncate">{task.title}</h5>
+                      <p className="text-[10px] text-[#8A8378]">Assigned to {task.assignee.name}</p>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {/* Deadline Alerts Section */}
-              {nearingItems.length === 0 && (activeRole !== 'Manager' || pendingApprovals.length === 0) ? (
-                <p className="text-xs text-stone-400 py-3 text-center">
-                  ✨ No pending approval requests or deadline alerts.
-                </p>
-              ) : (
-                nearingItems.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-stone-300 block">
-                      Deadline Alerts ({nearingItems.length})
-                    </span>
-                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                      {nearingItems.map(({ task, info }) => (
-                        <div
-                          key={task.id}
-                          onClick={() => {
-                            if (onSelectTask) onSelectTask(task);
-                            onNavigate('Dashboard', 'none');
-                            setIsAlertsOpen(false);
-                          }}
-                          className="p-2.5 bg-[#251D18] hover:bg-[#322721] rounded-xl border border-amber-500/20 cursor-pointer transition-colors space-y-1"
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800">
-                              {task.code}
-                            </span>
-                            <span className="text-[10px] bg-yellow-400 text-stone-950 font-bold px-2 py-0.5 rounded-full">
-                              {info.statusLabel}
-                            </span>
-                          </div>
-                          <h5 className="font-semibold text-xs text-stone-200 truncate">{task.title}</h5>
-                          <p className="text-[10px] text-stone-400">Assigned to {task.assignee.name}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              )}
-
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+              <div className="pt-2 border-t border-[#302B24] flex items-center justify-between">
                 <button
                   onClick={() => {
-                    onNavigate('TaskBoard', 'none');
+                    onNavigate('Dashboard', 'none');
                     setIsAlertsOpen(false);
                   }}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
+                  className="text-xs text-[#C49A5A] hover:text-[#D6B77A] font-bold flex items-center gap-1"
                 >
-                  <span>Open Task Board</span>
+                  <span>Go to Dashboard</span>
                   <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </button>
                 <button
                   onClick={() => setIsAlertsOpen(false)}
-                  className="text-xs text-stone-400 hover:text-white"
+                  className="text-xs text-[#8A8378] hover:text-[#F7F3EA]"
                 >
                   Close
                 </button>
+              </div>
+
+              {/* Recent Activity Feed (AppNotification events) */}
+              <div className="pt-2 border-t border-[#302B24]">
+                <div className="flex items-center justify-between pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#C49A5A] text-base">history</span>
+                    <h4 className="font-bold text-sm text-[#F7F3EA]">Recent Activity</h4>
+                  </div>
+                  {notifications.length > 0 && (
+                    <span className="bg-[#C49A5A]/20 text-[#D6B77A] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#C49A5A]/30">
+                      {notifications.length} Events
+                    </span>
+                  )}
+                </div>
+
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-[#8A8378] py-2 text-center">
+                    No recent activity events yet.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                    {notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          if (n.targetScreen) onNavigate(n.targetScreen, 'none');
+                          setIsAlertsOpen(false);
+                        }}
+                        className="p-2.5 bg-[#24211C] hover:bg-[#302B24] rounded-xl border border-[#302B24] cursor-pointer transition-colors flex items-start gap-2.5"
+                      >
+                        <span className="material-symbols-outlined text-[#D6B77A] text-base mt-0.5">
+                          {notificationIcon(n.type)}
+                        </span>
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <h5 className="font-bold text-xs text-[#F7F3EA] truncate">{n.title}</h5>
+                            <span className="text-[10px] text-[#8A8378] shrink-0">
+                              {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#8A8378] line-clamp-2">{n.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
 
-
-
-        {/* Security Policy & RBAC Notes Modal Trigger */}
-        <button
-          onClick={onOpenSecurityModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-500/30 text-xs font-bold transition-all shadow-2xs"
-          title="Notes on Security Considerations & RBAC Policy"
-        >
-          <span className="material-symbols-outlined text-base text-amber-600">verified_user</span>
-          <span className="hidden md:inline">Security & RBAC Policy</span>
-        </button>
-
-        {/* Production Team Scope Display */}
-        {activeRole === 'Manager' ? (
-          <div className="hidden sm:flex items-center gap-1.5 bg-[#F3E9DC] border border-[#E5D5C0] px-3 py-1 rounded-full text-xs font-bold text-[#3D3028]">
-            <span className="material-symbols-outlined text-sm text-[#8B5E3C]">groups</span>
-            <span>Team: {userProfile?.teamName || 'Unknown Team'}</span>
-          </div>
-        ) : (
-          <div className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold text-amber-900">
-            <span className="material-symbols-outlined text-sm text-amber-700">badge</span>
-            <span>Team: {userProfile?.teamName || 'Unknown Team'}</span>
-          </div>
-        )}
-
-        {/* Read-Only RBAC Role Badge (Production Security) */}
-        <div
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs ${
-            activeRole === 'Manager'
-              ? 'bg-[#606C38]/15 text-[#606C38] border-[#606C38]/30'
-              : 'bg-blue-500/15 text-blue-800 border-blue-500/30'
-          }`}
-          title={`Authenticated Role: ${userProfile?.role || activeRole}`}
-        >
-          <span className="material-symbols-outlined text-base">
-            {activeRole === 'Manager' ? 'admin_panel_settings' : 'badge'}
-          </span>
-          <span>Role: {activeRole}</span>
-        </div>
-
-        {/* Search Trigger Button */}
+        {/* Global Search Button */}
         <button
           onClick={() => onNavigate('GlobalSearch', 'slide_up')}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#F3E9DC] hover:bg-[#E5D5C0] text-[#5C4D42] text-xs font-medium border-none transition-colors"
-          title="Search project workspace"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F7F3EA] text-[#625C52] text-xs font-medium transition-colors border border-[#E4DDD0]"
+          title="Search workspace (⌘K)"
         >
-          <span className="material-symbols-outlined text-base text-[#D4A373]">search</span>
-          <span className="hidden lg:inline">Global Search...</span>
-          <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] bg-[#FDF8F3] border border-[#E5D5C0] rounded text-[#8B5E3C]">⌘K</kbd>
+          <span className="material-symbols-outlined text-base text-[#8A8378]">search</span>
+          <span className="hidden md:inline">Search...</span>
+          <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-[#FBF9F4] border border-[#E4DDD0] rounded text-[#8A8378]">⌘K</kbd>
         </button>
 
-        {/* New Task Button */}
+        {/* + New Task Primary CTA */}
         <button
           onClick={() => onNavigate('NewTask', 'slide_up')}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#606C38] hover:bg-[#4d572d] text-white text-xs font-medium shadow-sm transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold shadow-xs transition-colors"
         >
           <span className="material-symbols-outlined text-base">add</span>
           <span className="hidden sm:inline">New Task</span>
         </button>
 
-        {/* Settings Button */}
-        <button
-          onClick={() => onNavigate('Settings', 'none')}
-          className="p-2 text-[#5C4D42] hover:bg-[#F3E9DC] rounded-full transition-colors"
-          title="Settings"
-        >
-          <span className="material-symbols-outlined text-xl">settings</span>
-        </button>
-
-        {/* Sign Up / Account Profile Trigger */}
+        {/* Functional Header Sign In / Profile Dropdown Menu */}
         {user ? (
-          <div className="flex items-center gap-2">
+          <div className="relative" ref={profileMenuRef}>
             <button
-              onClick={() => onNavigate('Profile', 'none')}
-              className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#D4A373] hover:ring-2 hover:ring-[#D4A373]/40 transition-all bg-[#E5D5C0]"
-              title={`${userProfile?.displayName || user.email} (Manage Profile)`}
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              className="flex items-center gap-2 p-1 rounded-xl hover:bg-[#E4DDD0]/50 transition-colors border border-transparent hover:border-[#E4DDD0]"
+              title="Account Menu"
             >
               <img
-                src={userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                alt={userProfile?.displayName || 'User'}
-                className="w-full h-full object-cover"
+                src={
+                  userProfile?.photoURL ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+                }
+                alt={userProfile?.displayName || 'User Avatar'}
+                className="w-8 h-8 rounded-full object-cover border border-[#C49A5A]"
               />
+              <span className="material-symbols-outlined text-[#625C52] text-base hidden sm:inline">
+                expand_more
+              </span>
             </button>
-            <button
-              onClick={signOutUser}
-              className="p-1.5 rounded-full text-[#8B5E3C] hover:bg-[#F3E9DC] transition-colors text-xs flex items-center"
-              title="Sign Out"
-            >
-              <span className="material-symbols-outlined text-lg">logout</span>
-            </button>
+
+            {/* Authenticated Profile Dropdown Menu */}
+            {isProfileMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-[#171613] border border-[#302B24] text-[#F7F3EA] rounded-2xl shadow-xl p-2 z-50 space-y-1">
+                {/* User Card Header */}
+                <div className="p-3 border-b border-[#302B24] bg-[#24211C] rounded-xl space-y-1">
+                  <p className="text-xs font-bold text-[#F7F3EA] truncate">
+                    {userProfile?.displayName || user.email || 'Authenticated User'}
+                  </p>
+                  <p className="text-[11px] text-[#8A8378] truncate">{user.email}</p>
+                  <div className="pt-1 flex items-center justify-between text-[10px]">
+                    <span className="font-semibold text-[#D6B77A] bg-[#C49A5A]/20 px-2 py-0.5 rounded-full border border-[#C49A5A]/30">
+                      Role: {activeRole}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const newRole = activeRole === 'Manager' ? 'Employee' : 'Manager';
+                        switchActiveRole(newRole);
+                      }}
+                      className="text-[#8A8378] hover:text-[#C49A5A] underline font-medium"
+                    >
+                      Switch to {activeRole === 'Manager' ? 'Employee' : 'Manager'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Profile Link */}
+                <button
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    onNavigate('Profile', 'none');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#F7F3EA] hover:bg-[#24211C] transition-colors text-left"
+                >
+                  <span className="material-symbols-outlined text-base text-[#C49A5A]">account_circle</span>
+                  <span>View Profile</span>
+                </button>
+
+                {/* Guided Tour Trigger */}
+                {onOpenWalkthrough && (
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenWalkthrough();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#F7F3EA] hover:bg-[#24211C] transition-colors text-left"
+                  >
+                    <span className="material-symbols-outlined text-base text-[#D6B77A]">route</span>
+                    <span>Interactive Guided Tour</span>
+                  </button>
+                )}
+
+                {/* Security & RBAC Policy Trigger */}
+                {onOpenSecurityModal && (
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenSecurityModal();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#F7F3EA] hover:bg-[#24211C] transition-colors text-left"
+                  >
+                    <span className="material-symbols-outlined text-base text-[#C49A5A]">shield</span>
+                    <span>Security & RBAC Policy</span>
+                  </button>
+                )}
+
+                {/* Demo Hub Link */}
+                <button
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    onNavigate('Demo', 'none');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#F7F3EA] hover:bg-[#24211C] transition-colors text-left"
+                >
+                  <span className="material-symbols-outlined text-base text-[#D6B77A]">dataset</span>
+                  <span>Demo Hub (/demo)</span>
+                </button>
+
+                <div className="border-t border-[#302B24] pt-1">
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      signOutUser();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-red-500/10 transition-colors text-left font-medium"
+                  >
+                    <span className="material-symbols-outlined text-base">logout</span>
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <button
             onClick={() => onNavigate('SignUp', 'slide_up')}
-            className="px-3 py-1.5 rounded-full bg-[#D4A373] hover:bg-[#b88657] text-white text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#171613] hover:bg-[#24211C] text-[#F7F3EA] text-xs font-bold transition-colors shadow-xs border border-[#302B24]"
           >
-            Sign In
+            <span className="material-symbols-outlined text-base">login</span>
+            <span>Sign In</span>
           </button>
         )}
 
@@ -317,5 +361,3 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     </header>
   );
 };
-
-
