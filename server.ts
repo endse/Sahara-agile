@@ -1,6 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -12,9 +11,20 @@ import * as fs from 'fs';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
-  // Look for a real service account file (must have private_key)
   const serviceAccountPath = path.resolve('service-account.json');
-  if (fs.existsSync(serviceAccountPath)) {
+  
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      initializeApp({
+        credential: cert(sa),
+        projectId: sa.project_id || 'temp-418609',
+      });
+    } catch (e) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable', e);
+      initializeApp({ projectId: 'temp-418609' });
+    }
+  } else if (fs.existsSync(serviceAccountPath)) {
     const sa = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
     if (sa.private_key) {
       initializeApp({
@@ -92,9 +102,13 @@ if (process.env.NODE_ENV === 'test') {
 } else {
   // Check if we have real service account credentials
   const serviceAccountPath = path.resolve('service-account.json');
-  const hasCredentials = fs.existsSync(serviceAccountPath) && (() => {
-    try { return !!JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8')).private_key; } catch { return false; }
+  const hasEnvCredentials = (() => {
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT) return false;
+    try { return !!JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT).private_key; } catch { return false; }
   })();
+  const hasCredentials = hasEnvCredentials || (fs.existsSync(serviceAccountPath) && (() => {
+    try { return !!JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8')).private_key; } catch { return false; }
+  })());
   const hasADC = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
   if (hasCredentials || hasADC) {
@@ -750,6 +764,8 @@ app.get('/api/queue/report/latest', (req, res) => {
 // --- VITE MIDDLEWARE & STATIC SERVING ---
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const viteModule = 'vite';
+    const { createServer: createViteServer } = await import(viteModule);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
