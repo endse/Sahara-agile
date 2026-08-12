@@ -51,6 +51,18 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
   const [description, setDescription] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!locationId && locations.length > 0) {
+      setLocationId(locations[0].id);
+    }
+  }, [locations, locationId]);
+
+  useEffect(() => {
+    if (!assigneeId && combinedTeam.length > 0) {
+      setAssigneeId(combinedTeam[0].id);
+    }
+  }, [combinedTeam, assigneeId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
