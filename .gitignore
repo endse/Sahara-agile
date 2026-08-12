@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+temp-418609-firebase-adminsdk-fbsvc-52483ce52a.json
+service-account.json

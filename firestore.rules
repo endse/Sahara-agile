@@ -77,7 +77,7 @@ service cloud.firestore {
         request.auth.uid == userId;
 
       // User can update their own profile.
-      // Prevent changing team/role unless Manager/Admin.
+      // Prevent changing team/role unless Manager/Admin, or if joining a team for the first time.
       allow update: if isSignedIn() &&
         request.auth.uid == userId &&
         (
@@ -87,6 +87,8 @@ service cloud.firestore {
           )
           ||
           isManager()
+          ||
+          resource.data.teamId == "" || resource.data.teamId == null
         );
 
       // Usually users should not be allowed to delete themselves.
@@ -100,11 +102,13 @@ service cloud.firestore {
 
     match /invitations/{inviteId} {
 
-      allow read: if isManager();
+      allow read: if isSignedIn();
 
       allow create: if isManager();
 
-      allow update, delete: if isManager();
+      allow update: if isManager() || (isSignedIn() && request.resource.data.status == 'accepted');
+      
+      allow delete: if isManager();
     }
 
 
@@ -196,17 +200,14 @@ service cloud.firestore {
 
       allow read: if canAccessTeam(resource.data.teamId);
 
-      allow create: if canManageTeam(
-        request.resource.data.teamId
-      );
+      allow create: if canManageTeam(request.resource.data.teamId) ||
+        (isSignedIn() && request.resource.data.teamId != null);
 
       allow update: if
-        canManageTeam(resource.data.teamId) &&
-        canManageTeam(request.resource.data.teamId);
+        (canManageTeam(resource.data.teamId) && canManageTeam(request.resource.data.teamId)) ||
+        (userExists() && getUserData().teamId == resource.data.teamId);
 
-      allow delete: if canManageTeam(
-        resource.data.teamId
-      );
+      allow delete: if canManageTeam(resource.data.teamId);
     }
 
 
