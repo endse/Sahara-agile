@@ -223,9 +223,14 @@ function AppContent() {
 
   const handleAddTask = async (newTask: Task) => {
     setTasks(prev => [newTask, ...prev]);
-    await saveTask(newTask);
+    try {
+      await saveTask(newTask);
+    } catch (err) {
+      setTasks(prev => prev.filter(t => t.id !== newTask.id));
+      throw err;
+    }
 
-    // Log activity
+    // Log activity (non-blocking — task is already saved)
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
       user: userProfile?.displayName || 'Amara Vance',
@@ -234,10 +239,14 @@ function AppContent() {
       target: `${newTask.code} (${newTask.title})`,
       time: 'Just now',
       type: 'status',
-      detail: `Assigned to ${newTask.assignee.name} at ${newTask.region}`
+      detail: `Assigned to ${newTask.assignee.name} at ${newTask.region ?? 'Unassigned region'}`
     };
     setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
+    try {
+      await saveActivity(newAct);
+    } catch (err) {
+      console.warn('[firestore] Activity log save failed (task was saved):', err);
+    }
 
     // Notification system event
     handleNotify({

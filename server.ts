@@ -34,7 +34,9 @@ function isPortOpen(port: number): Promise<boolean> {
   });
 }
 
-function waitForPort(port: number, timeoutMs = 12000): Promise<void> {
+const EMULATOR_STARTUP_TIMEOUT_MS = Number(process.env.EMULATOR_STARTUP_TIMEOUT_MS) || 90000;
+
+function waitForPort(port: number, timeoutMs = EMULATOR_STARTUP_TIMEOUT_MS): Promise<void> {
   const start = Date.now();
   return new Promise((resolve, reject) => {
     const attempt = async () => {
@@ -48,10 +50,10 @@ function waitForPort(port: number, timeoutMs = 12000): Promise<void> {
   });
 }
 
-async function ensureEmulatorsRunning(): Promise<void> {
-  if (await isPortOpen(8080)) {
-    // Emulators already running
-    return;
+async function ensureEmulatorsRunning(): Promise<boolean> {
+  if (await isPortOpen(8080) && await isPortOpen(9099)) {
+    console.log('[sahara] Firebase Emulators already running (Firestore :8080, Auth :9099).');
+    return true;
   }
 
   const root = process.cwd();
@@ -70,7 +72,7 @@ async function ensureEmulatorsRunning(): Promise<void> {
     emulatorArgs.push(`--import=${exportDir}`);
   }
 
-  console.log('[sahara] Provisioning Firebase Emulators (Firestore + Auth)...');
+  console.log(`[sahara] Provisioning Firebase Emulators (Firestore + Auth)... (timeout ${EMULATOR_STARTUP_TIMEOUT_MS / 1000}s)`);
   try {
     emulatorChild = spawn(process.execPath, emulatorArgs, {
       cwd: root,
@@ -82,12 +84,14 @@ async function ensureEmulatorsRunning(): Promise<void> {
     await waitForPort(8080);
     await waitForPort(9099);
     console.log('[sahara] Firebase Emulators are ready (Firestore :8080, Auth :9099).');
+    return true;
   } catch (err: any) {
     console.warn('[sahara] Local emulators unavailable or timed out. Operating in fallback mode:', err.message);
     if (emulatorChild && !emulatorChild.killed) {
       try { emulatorChild.kill(); } catch (e) {}
       emulatorChild = null;
     }
+    return false;
   }
 }
 
@@ -591,9 +595,13 @@ app.get('/api/queue/report/latest', (req, res) => {
 // --- VITE MIDDLEWARE & STATIC SERVING ---
 async function startServer() {
   if (process.env.FIREBASE_EMULATORS !== 'false') {
-    process.env.VITE_USE_EMULATORS = 'true';
-    await ensureEmulatorsRunning();
-    startEmulatorWatchdog();
+    const emulatorsReady = await ensureEmulatorsRunning();
+    process.env.VITE_USE_EMULATORS = emulatorsReady ? 'true' : 'false';
+    if (emulatorsReady) {
+      startEmulatorWatchdog();
+    } else {
+      console.warn('[sahara] Using cloud Firestore because local emulators are unavailable.');
+    }
   }
 
   if (process.env.NODE_ENV !== 'production') {

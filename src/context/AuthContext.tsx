@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   // Sync role to Express server via HttpOnly cookie JWT endpoint
-  const syncJwtCookie = async (role: 'Manager' | 'Employee', name?: string) => {
+  const syncJwtCookie = async (role: 'Manager' | 'Employee', name?: string, email?: string) => {
     try {
       await fetch('/api/auth/login', {
         method: 'POST',
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({
           role,
           userName: name || userProfile?.displayName || 'Amara Vance',
-          email: userProfile?.email || 'amara.vance@sahara.io',
+          email: email || userProfile?.email || 'amara.vance@sahara.io',
         }),
       });
     } catch (err) {
@@ -69,19 +69,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(userRef);
 
+      let resolvedRole: 'Manager' | 'Employee' = 'Employee';
+
       if (docSnap.exists()) {
         const data = docSnap.data() as UserProfile;
         setUserProfile(data);
         if (data.role?.toLowerCase().includes('manager') || data.role?.toLowerCase().includes('director')) {
+          resolvedRole = 'Manager';
           setActiveRole('Manager');
+        } else {
+          setActiveRole('Employee');
         }
       } else {
+        const profileRole = customRole || 'Software Manager';
         const newProfile: UserProfile = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
           displayName: customName || firebaseUser.displayName || 'Software Engineer',
           photoURL: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-          role: customRole || 'Software Manager',
+          role: profileRole,
           specialty: 'Full-Stack & Cloud Architecture',
           assignedStation: 'US-East Cloud Cluster',
           phone: '+1 (415) 890-2026',
@@ -90,8 +96,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         await setDoc(userRef, newProfile);
         setUserProfile(newProfile);
+        if (profileRole.toLowerCase().includes('manager') || profileRole.toLowerCase().includes('director')) {
+          resolvedRole = 'Manager';
+          setActiveRole('Manager');
+        } else {
+          setActiveRole('Employee');
+        }
       }
-      await syncJwtCookie(activeRole, customName || firebaseUser.displayName || 'Field Operator');
+
+      await syncJwtCookie(
+        resolvedRole,
+        customName || firebaseUser.displayName || undefined,
+        firebaseUser.email || undefined
+      );
     } catch (err) {
       console.error('Error syncing user profile:', err);
     }

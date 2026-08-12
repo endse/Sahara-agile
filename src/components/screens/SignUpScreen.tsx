@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ScreenId } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { USE_EMULATORS } from '../../lib/firebase';
+import { getAuthErrorMessage } from '../../lib/authErrors';
 
 interface SignUpProps {
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up' | 'slide_down') => void;
@@ -31,8 +33,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
       }, 1000);
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Authentication failed. Please check your credentials.');
+    } catch (err: unknown) {
+      setErrorMsg(getAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -47,8 +49,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
       }, 1000);
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Google authentication failed.');
+    } catch (err: unknown) {
+      setErrorMsg(getAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -60,8 +62,8 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
     try {
       await signInAsGuest();
       onNavigate('Dashboard', 'slide_down');
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Guest login failed.');
+    } catch (err: unknown) {
+      setErrorMsg(getAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -77,6 +79,11 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
           </div>
           <h1 className="text-2xl font-bold text-[#171512]">Sahara Agile Works</h1>
           <p className="text-xs text-[#625C52]">Sign in to your account or register a new user profile</p>
+          {USE_EMULATORS && (
+            <p className="text-[10px] text-[#8A8378] bg-[#FBF9F4] border border-[#E4DDD0] rounded-lg px-3 py-1.5">
+              Local dev mode — use email/password or Continue as Guest.
+            </p>
+          )}
         </div>
 
         {/* Mode Selector */}
