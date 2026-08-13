@@ -53,7 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const idToken = await auth.currentUser?.getIdToken(true);
       if (!idToken) return;
-      await fetch('/api/auth/login', {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
@@ -119,7 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         const idToken = await firebaseUser.getIdToken(true);
 
-        const response = await fetch('/api/auth/sync-profile', {
+        const API_BASE = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${API_BASE}/api/auth/sync-profile`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

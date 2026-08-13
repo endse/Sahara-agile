@@ -6,6 +6,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, Query } from 'firebase-admin/firestore';
 import { globalJobQueue } from './src/services/jobQueueService';
 import jwt from 'jsonwebtoken';
+import cors from 'cors';
 
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
@@ -244,6 +245,11 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -410,7 +416,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.cookie('token', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: expiresIn * 1000,
       path: '/',
     });
