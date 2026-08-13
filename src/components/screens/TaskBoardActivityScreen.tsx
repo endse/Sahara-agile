@@ -193,7 +193,7 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
                 ))}
               </div>
 
-              {/* Task Telemetry Attachments (Firebase Storage) */}
+              {/* Task Telemetry Attachments */}
               <div className="border-t border-[#e0d8cc] pt-4">
                 <TaskAttachmentsManager
                   taskId={selectedTask.id}

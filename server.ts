@@ -443,6 +443,9 @@ app.get('/api/projects', async (req: Request, res: Response) => {
 app.post('/api/projects', async (req: Request, res: Response) => {
   try {
     const p = req.body;
+    if (!p || !p.name) {
+      return res.status(400).json({ success: false, error: 'Project name is required' });
+    }
     const id = p.id || `LOC-${Date.now()}`;
     await pool.query(
       `INSERT INTO locations (id, name, region, coordinates, status, task_count, crew_count, lead, temperature, weather_condition, humidity, wind_speed, uv_index, assigned_member_ids, team_id)

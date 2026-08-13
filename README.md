@@ -2,7 +2,7 @@
 
 **Sahara Agile Works** is a full-stack, production-minded employee tracking and agile project management application designed for field operations, infrastructure projects, and distributed team tracking across harsh remote environments (Al-Kufra Hydro Site, Djanet Solar Microgrid, Tibesti Shield Base, Sebha Solar Complex).
 
-It combines a reactive **React 19 SPA** frontend with a robust **Node.js Express REST API**, **Firebase Firestore & Authentication**, a **Redis-Pattern Background Job Queue** with **Exponential Backoff Retries** and **Dead Letter Queue (DLQ)** handling, a **GitHub Actions CI/CD Pipeline**, and serverless deployment readiness for **Vercel**.
+It combines a reactive **React 19 SPA** frontend with a robust **Node.js Express REST API**, **Neon PostgreSQL Database**, a **Redis-Pattern Background Job Queue** with **Exponential Backoff Retries** and **Dead Letter Queue (DLQ)** handling, a **GitHub Actions CI/CD Pipeline**, and deployment readiness for **Vercel** and **Render**.
 
 ---
 
@@ -15,10 +15,9 @@ flowchart TD
     subgraph Client ["Client Layer (Browser / Mobile)"]
         SPA["React 19 SPA Frontend\n(Vite 6 + Tailwind CSS v4 + Motion)"]
         AuthCtx["Auth Context & RBAC Guard"]
-        StoreSub["Firestore Reactive Listener (onSnapshot)"]
     end
 
-    subgraph API ["Server Layer (Node.js Express / Vercel Serverless)"]
+    subgraph API ["Server Layer (Node.js Express / Render)"]
         Router["Express API Router (/api/*)"]
         JWTAuth["HttpOnly Cookie JWT Middleware"]
         RBAC["RBAC Guard (Manager vs Employee)"]
@@ -33,16 +32,13 @@ flowchart TD
     end
 
     subgraph Data ["Data Persistence & Auth"]
-        Firestore[("Firebase Firestore Database")]
-        FirebaseAuth["Firebase Auth (Email / Google OAuth)"]
+        NeonDB[("Neon PostgreSQL Database")]
     end
 
     SPA -->|REST Requests + Cookies| Router
-    AuthCtx -->|Authenticate User| FirebaseAuth
-    StoreSub <-->|Real-time WebSockets| Firestore
     Router --> JWTAuth
     JWTAuth --> RBAC
-    RBAC -->|Query & Write| Firestore
+    RBAC -->|PostgreSQL SQL Queries| NeonDB
     Producer -->|Enqueue Job| RedisQ
     RedisQ --> Worker
     Worker --> CronService

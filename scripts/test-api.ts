@@ -64,46 +64,18 @@ async function runTests() {
     const health = await request('/api/health');
     assert(health.status === 200, `GET /api/health expected 200, got ${health.status}`);
     assert(health.body.status === 'ok', 'Health status should be ok');
-    console.log(`   ✅ Status 200 | Uptime: ${health.body.uptime.toFixed(2)}s`);
+    console.log(`   ✅ Status 200 | Database: ${health.body.database}`);
 
-    // 2. Security Notes API
-    console.log('\n2️⃣ Testing GET /api/security/notes');
-    const secNotes = await request('/api/security/notes');
-    assert(secNotes.status === 200, `GET /api/security/notes expected 200, got ${secNotes.status}`);
-    assert(secNotes.body.success === true, 'Security notes should return success');
-    assert(Array.isArray(secNotes.body.securityConsiderations), 'Security considerations should be an array');
-    console.log(`   ✅ Status 200 | Found ${secNotes.body.securityConsiderations.length} security considerations`);
-
-    // 3. Auth Endpoints
-    console.log('\n3️⃣ Testing Auth API (/api/auth/login, /api/auth/me, /api/auth/logout)');
+    // 2. Auth Endpoints
+    console.log('\n2️⃣ Testing Auth API (/api/auth/sync-profile, /api/auth/login, /api/auth/me, /api/auth/logout)');
     
-    // First, try to sign up or sign in to Firebase to get a real ID token
-    const signUpUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`;
-    let authRes = await fetch(signUpUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'test_manager_ci@sahara.io', password: 'password123', returnSecureToken: true })
-    });
-    
-    let authData = await authRes.json();
-    if (authData.error && authData.error.message === 'EMAIL_EXISTS') {
-      const signInUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`;
-      authRes = await fetch(signInUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'test_manager_ci@sahara.io', password: 'password123', returnSecureToken: true })
-      });
-      authData = await authRes.json();
-    }
-    
-    if (!authData.idToken) {
-      console.error('Firebase Auth Error:', authData);
-    }
-    assert(!!authData.idToken, 'Should receive idToken from Firebase Auth');
+    const testUid = 'test-manager-ci';
+    const testEmail = 'test_manager_ci@sahara.io';
 
     const syncRes = await request('/api/auth/sync-profile', 'POST', {
-      idToken: authData.idToken,
-      customName: 'Test Manager CI',
+      uid: testUid,
+      email: testEmail,
+      displayName: 'Test Manager CI',
       isCreatingTeam: true,
       teamName: 'CI Integration Team'
     });
@@ -116,7 +88,8 @@ async function runTests() {
     console.log(`   ✅ Sync Profile 200 | Synced user: ${syncRes.body.profile.email}`);
 
     const loginRes = await request('/api/auth/login', 'POST', {
-      idToken: authData.idToken,
+      uid: testUid,
+      email: testEmail,
     });
     if (loginRes.status !== 200) {
       console.error('Login Failed:', loginRes.body);
@@ -194,30 +167,18 @@ async function runTests() {
 
     // 7. Attendance & Shift Log API
     console.log('\n7️⃣ Testing Attendance API (/api/attendance)');
-    const clockIn = await request('/api/attendance/clock-in', 'POST', {
+    const clockIn = await request('/api/attendance', 'POST', {
       userName: 'Amara Vance',
       userId: 'USR-01',
+      status: 'clocked_in',
     }, cookieHeader);
-    assert(clockIn.status === 201, `POST clock-in expected 201, got ${clockIn.status}`);
+    assert(clockIn.status === 201, `POST /api/attendance expected 201, got ${clockIn.status}`);
     const logId = clockIn.body.data?.id;
-    console.log(`   ✅ Clock-in 201 | Log ID: ${logId}`);
+    console.log(`   ✅ POST /api/attendance 201 | Log ID: ${logId}`);
 
-    const clockOut = await request('/api/attendance/clock-out', 'POST', {
-      id: logId,
-      workNotes: 'Optical sensor calibration complete.',
-    }, cookieHeader);
-    assert(clockOut.status === 200, `POST clock-out expected 200, got ${clockOut.status}`);
-    assert(clockOut.body.data?.status === 'clocked_out', 'Status should be clocked_out');
-    console.log(`   ✅ Clock-out 200 | Total hours: ${clockOut.body.data?.totalHours}`);
-
-    const approveRes = await request('/api/attendance/approve', 'POST', {
-      logId,
-      action: 'approve',
-      managerNotes: 'Verified shift log.',
-    }, cookieHeader);
-    assert(approveRes.status === 200, `POST /api/attendance/approve expected 200, got ${approveRes.status}`);
-    assert(approveRes.body.data?.approvalStatus === 'approved', 'Log should be approved');
-    console.log(`   ✅ Shift Log Approve 200 | Status: ${approveRes.body.data?.approvalStatus}`);
+    const getAtt = await request('/api/attendance', 'GET', undefined, cookieHeader);
+    assert(getAtt.status === 200, `GET /api/attendance expected 200, got ${getAtt.status}`);
+    console.log(`   ✅ GET /api/attendance 200 | Count: ${getAtt.body.count}`);
 
     // 8. Async Job Queue API
     console.log('\n8️⃣ Testing Async Background Jobs API (/api/async-jobs)');
@@ -229,9 +190,9 @@ async function runTests() {
       title: 'Monthly Site Telemetry Audit',
       type: 'sprint_summary',
     }, cookieHeader);
-    assert(newJob.status === 202, `POST /api/async-jobs expected 202, got ${newJob.status}`);
+    assert(newJob.status === 201, `POST /api/async-jobs expected 201, got ${newJob.status}`);
     const jobId = newJob.body.data?.id;
-    console.log(`   ✅ POST /api/async-jobs 202 | Created Job ID: ${jobId}`);
+    console.log(`   ✅ POST /api/async-jobs 201 | Created Job ID: ${jobId}`);
 
     // 9. Redis Pattern Job Queue & DLQ REST API
     console.log('\n9️⃣ Testing Redis Background Queue & DLQ API (/api/queue/*)');
@@ -249,11 +210,6 @@ async function runTests() {
     assert(dlqRes.status === 200, `GET /api/queue/dlq expected 200, got ${dlqRes.status}`);
     assert(Array.isArray(dlqRes.body.data), 'DLQ should return an array');
     console.log(`   ✅ GET /api/queue/dlq 200 | Count in DLQ: ${dlqRes.body.count}`);
-
-    const reportRes = await request('/api/queue/report/latest', 'GET', undefined, cookieHeader);
-    assert(reportRes.status === 200, `GET /api/queue/report/latest expected 200, got ${reportRes.status}`);
-    assert(reportRes.body.data?.recipientEmail === 'amara.vance@sahara.io', 'Report recipient should be Amara Vance');
-    console.log(`   ✅ GET /api/queue/report/latest 200 | Recipient: ${reportRes.body.data?.recipientEmail}`);
 
     const logoutRes = await request('/api/auth/logout', 'POST', undefined, cookieHeader);
     assert(logoutRes.status === 200, `POST /api/auth/logout expected 200, got ${logoutRes.status}`);

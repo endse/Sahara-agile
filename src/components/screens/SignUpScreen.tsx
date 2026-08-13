@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ScreenId } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { USE_EMULATORS } from '../../lib/firebase';
 import { getAuthErrorMessage } from '../../lib/authErrors';
 
 interface SignUpProps {

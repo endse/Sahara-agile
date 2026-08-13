@@ -168,7 +168,7 @@ export const TaskAttachmentsManager: React.FC<TaskAttachmentsManagerProps> = ({
               Click or drag images & documents to attach
             </p>
             <p className="text-[10px] text-[#8B5E3C] mt-0.5">
-              Supports PNG, JPG, PDF, DOCX, CSV, TXT (hosted on Firebase Storage)
+              Supports PNG, JPG, PDF, DOCX, CSV, TXT
             </p>
           </div>
         </div>
@@ -180,7 +180,7 @@ export const TaskAttachmentsManager: React.FC<TaskAttachmentsManagerProps> = ({
           <div className="flex items-center justify-between text-xs text-[#606C38] font-bold">
             <span className="flex items-center gap-2">
               <span className="w-3 h-3 border-2 border-[#606C38] border-t-transparent rounded-full animate-spin" />
-              Uploading to Firebase Storage...
+              Uploading attachment...
             </span>
             <span>{uploadProgress}%</span>
           </div>
