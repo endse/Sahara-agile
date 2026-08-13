@@ -33,22 +33,33 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
   const [newTaskError, setNewTaskError] = useState<string | null>(null);
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false);
 
+  React.useEffect(() => {
+    if (locations.length > 0 && (!selectedProjectId || !locations.some((l) => l.id === selectedProjectId))) {
+      setSelectedProjectId(locations[0].id);
+    }
+  }, [locations, selectedProjectId]);
+
   const currentProject = locations.find((l) => l.id === selectedProjectId) || locations[0];
 
-  const projectStories = stories.filter((s) => s.projectId === currentProject?.id || (s as any).projectName === currentProject?.name);
-  const projectTasks = tasks.filter(
-    (t) => t.projectId === currentProject?.id || t.region === currentProject?.region
-  );
-  const projectMilestones = timeline.filter(
-    (m) => m.title === currentProject?.name || m.region === currentProject?.region
-  );
+  const projectStories = currentProject
+    ? stories.filter((s) => s.projectId === currentProject.id || (s as any).projectName === currentProject.name)
+    : [];
+  const projectTasks = currentProject
+    ? tasks.filter((t) => t.projectId === currentProject.id || t.region === currentProject.region)
+    : [];
+  const projectMilestones = currentProject
+    ? timeline.filter((m) => m.title === currentProject.name || m.region === currentProject.region)
+    : [];
 
   const completedTasks = projectTasks.filter((t) => t.status === 'done').length;
   const progressPercentage =
     projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : currentProject?.status === 'completed' ? 100 : 40;
 
   const handleCreateTaskForProject = () => {
-    if (!currentProject) return;
+    if (!currentProject) {
+      onNavigate('NewTask', 'slide_up');
+      return;
+    }
     setNewTaskTitle('');
     setNewTaskPriority('medium');
     setNewTaskAssigneeId(team[0]?.id || '');
@@ -61,10 +72,6 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
     if (isTaskSubmitting) return;
     setNewTaskError(null);
 
-    if (!currentProject) {
-      setNewTaskError('No project selected. Please choose a project first.');
-      return;
-    }
     if (!newTaskTitle.trim()) {
       setNewTaskError('Please enter a task title.');
       return;
@@ -89,9 +96,9 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
       dueDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
       progress: 0,
       tags: ['Project Task'],
-      projectId: currentProject.id,
-      region: currentProject.region,
-      updatedAt: 'Just now',
+      projectId: currentProject?.id || '',
+      region: currentProject?.region || 'Default Region',
+      updatedAt: new Date().toISOString(),
     };
 
     setIsTaskSubmitting(true);
@@ -123,33 +130,57 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label htmlFor="project-select" className="text-xs font-semibold text-[#171512]">Select Project:</label>
-            <select
-              id="project-select"
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-[#FBF9F4] border border-[#E4DDD0] text-xs font-semibold text-[#171512] px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C49A5A]"
-            >
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name} ({loc.region})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {activeRole === 'Manager' && (
-            <button
-              onClick={() => onNavigate('NewProject', 'slide_up')}
-              className="px-4 py-2 bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-base">add</span>
-              <span>+ New Project</span>
-            </button>
+          {locations.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="project-select" className="text-xs font-semibold text-[#171512]">Select Project:</label>
+              <select
+                id="project-select"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="bg-[#FBF9F4] border border-[#E4DDD0] text-xs font-semibold text-[#171512] px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C49A5A]"
+              >
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} ({loc.region})
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
+
+          <button
+            onClick={() => onNavigate('NewProject', 'slide_up')}
+            className="px-4 py-2 bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            <span>+ New Project</span>
+          </button>
         </div>
       </div>
+
+      {/* Empty State Banner when no projects exist */}
+      {locations.length === 0 ? (
+        <div className="bg-white border border-[#E4DDD0] rounded-2xl p-8 lg:p-12 text-center space-y-4 shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-[#C49A5A]/15 text-[#A8793A] flex items-center justify-center mx-auto text-2xl">
+            <span className="material-symbols-outlined text-3xl">folder_open</span>
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-[#171512]">No Projects Created Yet</h3>
+            <p className="text-xs text-[#625C52]">
+              You have not created any projects in your workspace yet. Create your first project to manage user stories, sprint tasks, and GIS site telemetry.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => onNavigate('NewProject', 'slide_up')}
+              className="px-6 py-3 bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] text-xs font-bold rounded-xl shadow-xs transition-colors inline-flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+              <span>+ Create Your First Project</span>
+            </button>
+          </div>
+        </div>
+      ) : (
 
       {/* Visual Hierarchy Banner */}
       <div className="bg-[#C49A5A]/10 border border-[#C49A5A]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#625C52]">
@@ -543,6 +574,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
             </form>
           </div>
         </div>
+      )}
       )}
     </div>
   );
