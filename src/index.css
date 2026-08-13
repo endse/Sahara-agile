@@ -20,6 +20,13 @@ h1, h2, h3, h4, h5, h6, button, input, select, textarea, label, .font-headline, 
   font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: #8A8378;
+  opacity: 1;
+  font-weight: 400;
+}
+
 /* Material Symbols Outlined Icon Font - MUST take absolute precedence over text font rules */
 .material-symbols-outlined,
 .material-symbols-outlined * {

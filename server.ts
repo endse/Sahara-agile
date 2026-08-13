@@ -8,6 +8,8 @@ import { globalJobQueue } from './src/services/jobQueueService';
 import jwt from 'jsonwebtoken';
 
 import * as fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
+import net from 'net';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -128,7 +130,119 @@ if (process.env.NODE_ENV === 'test') {
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev';
+const JWT_SECRET = process.env.JWT_SECRET || 'sahara_agileworks_secure_jwt_secret_2026';
+
+// --- LOCAL FIREBASE EMULATOR BOOTSTRAP ---
+// The Sahara app depends on a provisioned Firestore + Auth database. When running
+// locally (dev server or the built server), we provision the Firebase Emulator
+// Suite automatically unless FIREBASE_EMULATORS is explicitly set to 'false'.
+let emulatorChild: ChildProcess | null = null;
+
+function isPortOpen(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: '127.0.0.1', port });
+    socket.setTimeout(1500);
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+const EMULATOR_STARTUP_TIMEOUT_MS = Number(process.env.EMULATOR_STARTUP_TIMEOUT_MS) || 90000;
+
+function waitForPort(port: number, timeoutMs = EMULATOR_STARTUP_TIMEOUT_MS): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = async () => {
+      if (await isPortOpen(port)) return resolve();
+      if (Date.now() - start > timeoutMs) {
+        return reject(new Error(`Timed out waiting for port ${port}`));
+      }
+      setTimeout(attempt, 500);
+    };
+    attempt();
+  });
+}
+
+async function ensureEmulatorsRunning(): Promise<boolean> {
+  if (await isPortOpen(8080) && await isPortOpen(9099)) {
+    console.log('[sahara] Firebase Emulators already running (Firestore :8080, Auth :9099).');
+    return true;
+  }
+
+  const root = process.cwd();
+  const firebaseBin = path.join(root, 'node_modules', 'firebase-tools', 'lib', 'bin', 'firebase.js');
+  const exportDir = path.join(root, '.firebase', 'emulator-export');
+  let emulatorArgs = [
+    firebaseBin,
+    'emulators:start',
+    '--only',
+    'auth,firestore',
+    '--project',
+    'demo-sahara',
+  ];
+  if (fs.existsSync(exportDir)) {
+    emulatorArgs.push(`--export-on-exit=${exportDir}`);
+    emulatorArgs.push(`--import=${exportDir}`);
+  }
+
+  console.log(`[sahara] Provisioning Firebase Emulators (Firestore + Auth)... (timeout ${EMULATOR_STARTUP_TIMEOUT_MS / 1000}s)`);
+  try {
+    emulatorChild = spawn(process.execPath, emulatorArgs, {
+      cwd: root,
+      stdio: 'ignore',
+      env: { ...process.env, CI: 'true' },
+    });
+    emulatorChild.on('error', (err) => console.warn('[sahara] Emulators failed to launch:', err.message));
+    
+    await waitForPort(8080);
+    await waitForPort(9099);
+    console.log('[sahara] Firebase Emulators are ready (Firestore :8080, Auth :9099).');
+    return true;
+  } catch (err: any) {
+    console.warn('[sahara] Local emulators unavailable or timed out. Operating in fallback mode:', err.message);
+    if (emulatorChild && !emulatorChild.killed) {
+      try { emulatorChild.kill(); } catch (e) {}
+      emulatorChild = null;
+    }
+    return false;
+  }
+}
+
+// Watchdog: if the emulator process is killed unexpectedly, restart it so the app
+// keeps working end-to-end without a manual restart.
+let watchdogStarted = false;
+function startEmulatorWatchdog() {
+  if (watchdogStarted) return;
+  watchdogStarted = true;
+  setInterval(() => {
+    if (process.env.FIREBASE_EMULATORS === 'false') return;
+    isPortOpen(8080).then((open) => {
+      if (!open && emulatorChild) {
+        console.log('[sahara] Firestore emulator is down - attempting restart...');
+        ensureEmulatorsRunning().catch((err) =>
+          console.warn('[sahara] Emulator restart skipped:', err.message)
+        );
+      }
+    });
+  }, 15000);
+}
+
+function shutdown() {
+  if (emulatorChild && !emulatorChild.killed) {
+    try { emulatorChild.kill(); } catch (e) {}
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -763,6 +877,15 @@ app.get('/api/queue/report/latest', (req, res) => {
 
 // --- VITE MIDDLEWARE & STATIC SERVING ---
 async function startServer() {
+  if (process.env.FIREBASE_EMULATORS !== 'false') {
+    const emulatorsReady = await ensureEmulatorsRunning();
+    process.env.VITE_USE_EMULATORS = emulatorsReady ? 'true' : 'false';
+    if (emulatorsReady) {
+      startEmulatorWatchdog();
+    } else {
+      console.warn('[sahara] Using cloud Firestore because local emulators are unavailable.');
+    }
+  }
   if (process.env.NODE_ENV !== 'production') {
     const viteModule = 'vite';
     const { createServer: createViteServer } = await import(viteModule);

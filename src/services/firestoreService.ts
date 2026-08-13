@@ -25,7 +25,12 @@ export const subscribeTasks = (teamId: string, onData: (tasks: Task[]) => void) 
 };
 
 export const saveTask = async (task: Task) => {
-  await setDoc(doc(db, 'tasks', task.id), task, { merge: true });
+  try {
+    await setDoc(doc(db, 'tasks', task.id), task, { merge: true });
+  } catch (err) {
+    console.error('[firestore] Failed to save task:', err);
+    throw err;
+  }
 };
 
 export const updateTaskStatus = async (taskId: string, status: Task['status']) => {

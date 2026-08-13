@@ -31,6 +31,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
   const [newTaskPriority, setNewTaskPriority] = useState<Task['priority']>('medium');
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState('');
   const [newTaskError, setNewTaskError] = useState<string | null>(null);
+  const [isTaskSubmitting, setIsTaskSubmitting] = useState(false);
 
   const currentProject = locations.find((l) => l.id === selectedProjectId) || locations[0];
 
@@ -57,6 +58,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
 
   const handleCreateTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isTaskSubmitting) return;
     setNewTaskError(null);
 
     if (!currentProject) {
@@ -68,7 +70,7 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
       return;
     }
 
-    const chosenAssignee = team.find((m) => m.id === newTaskAssigneeId);
+    const chosenAssignee = newTaskAssigneeId ? team.find((m) => m.id === newTaskAssigneeId) : undefined;
     const assignee = chosenAssignee
       ? { name: chosenAssignee.name, avatar: chosenAssignee.avatar, role: chosenAssignee.role }
       : {
@@ -92,12 +94,15 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
       updatedAt: 'Just now',
     };
 
+    setIsTaskSubmitting(true);
     try {
       await onAddTask?.(newTask);
       setIsTaskModalOpen(false);
       setNewTaskTitle('');
     } catch {
       setNewTaskError('Failed to save task. Please check your connection and try again.');
+    } finally {
+      setIsTaskSubmitting(false);
     }
   };
 
@@ -510,12 +515,12 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
                   onChange={(e) => { setNewTaskAssigneeId(e.target.value); setNewTaskError(null); }}
                   className="w-full bg-[#FBF9F4] border border-[#E4DDD0] rounded-xl p-2.5 text-xs text-[#171512]"
                 >
+                  <option value="">Unassigned</option>
                   {team.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name} — {m.role}
                     </option>
                   ))}
-                  {team.length === 0 && <option value="">Unassigned</option>}
                 </select>
               </div>
 
@@ -529,9 +534,10 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] px-4 py-2 rounded-xl text-xs font-bold"
+                  disabled={isTaskSubmitting}
+                  className="bg-[#C49A5A] hover:bg-[#A8793A] disabled:opacity-60 disabled:cursor-not-allowed text-[#0D0D0B] px-4 py-2 rounded-xl text-xs font-bold"
                 >
-                  Create Task
+                  {isTaskSubmitting ? 'Saving...' : 'Create Task'}
                 </button>
               </div>
             </form>
