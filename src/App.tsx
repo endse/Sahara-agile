@@ -271,9 +271,7 @@ function AppContent() {
       temperature: '35°C',
       teamId: userProfile?.teamId || userProfile?.uid || ''
     };
-    setLocations(prev => [newLoc, ...prev]);
-    await saveLocation(newLoc);
-
+    
     // Create new milestone for timeline
     const newMilestone: TimelineMilestone = {
       id: `PH-${Date.now()}`,
@@ -287,8 +285,6 @@ function AppContent() {
       region: projectData.region,
       teamId: userProfile?.teamId || userProfile?.uid || ''
     };
-    setTimeline(prev => [newMilestone, ...prev]);
-    await saveTimelineMilestone(newMilestone);
 
     // Log activity
     const newAct: Activity = {
@@ -302,26 +298,50 @@ function AppContent() {
       detail: `Directed by ${projectData.lead} in ${projectData.region}`,
       teamId: userProfile?.teamId || userProfile?.uid || ''
     };
-    setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
 
-    // Notification system event
-    handleNotify({
-      id: `NOTIF-${Date.now()}`,
-      title: 'New project initialized',
-      message: `${projectData.name} registered in ${projectData.region}`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      type: 'project_created',
-      targetScreen: 'Projects',
-      targetId: newLoc.id,
-    });
+    // Optimistic UI updates
+    setLocations(prev => [newLoc, ...prev]);
+    setTimeline(prev => [newMilestone, ...prev]);
+    setActivities(prev => [newAct, ...prev]);
+
+    try {
+      await saveLocation(newLoc);
+      await saveTimelineMilestone(newMilestone);
+      await saveActivity(newAct);
+
+      // Notification system event
+      handleNotify({
+        id: `NOTIF-${Date.now()}`,
+        title: 'New project initialized',
+        message: `${projectData.name} registered in ${projectData.region}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: 'project_created',
+        targetScreen: 'Projects',
+        targetId: newLoc.id,
+      });
+    } catch (err: any) {
+      console.error('[firestore] Failed to create project:', err);
+      // Rollback optimistic updates
+      setLocations(prev => prev.filter(l => l.id !== newLoc.id));
+      setTimeline(prev => prev.filter(t => t.id !== newMilestone.id));
+      setActivities(prev => prev.filter(a => a.id !== newAct.id));
+      handleNotify({
+        id: `NOTIF-ERR-${Date.now()}`,
+        title: 'Project Creation Failed',
+        message: 'Insufficient permissions or network error. Reverting changes.',
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: 'status_update',
+        targetScreen: 'Projects',
+        targetId: newLoc.id,
+      });
+    }
   };
 
   const handleAddStory = async (newStory: UserStory) => {
-    const storyWithTeam = { ...newStory, teamId: userProfile?.teamId || '' };
+    const storyWithTeam = { ...newStory, teamId: userProfile?.teamId || userProfile?.uid || '' };
     setStories(prev => [storyWithTeam, ...prev]);
-    await saveStory(storyWithTeam);
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
@@ -332,31 +352,53 @@ function AppContent() {
       time: 'Just now',
       type: 'status',
       detail: `${newStory.points} story points for ${newStory.projectName}`,
-      teamId: userProfile?.teamId || ''
+      teamId: userProfile?.teamId || userProfile?.uid || ''
     };
     setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
 
-    handleNotify({
-      id: `NOTIF-${Date.now()}`,
-      title: 'User story created',
-      message: `${newStory.id} - ${newStory.title}`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      type: 'story_created',
-      targetScreen: 'UserStories',
-      targetId: newStory.id,
-    });
+    try {
+      await saveStory(storyWithTeam);
+      await saveActivity(newAct);
+
+      handleNotify({
+        id: `NOTIF-${Date.now()}`,
+        title: 'User story created',
+        message: `${newStory.id} - ${newStory.title}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: 'story_created',
+        targetScreen: 'UserStories',
+        targetId: newStory.id,
+      });
+    } catch (err) {
+      console.error('[firestore] Failed to create story:', err);
+      setStories(prev => prev.filter(s => s.id !== storyWithTeam.id));
+      setActivities(prev => prev.filter(a => a.id !== newAct.id));
+      handleNotify({
+        id: `NOTIF-ERR-${Date.now()}`,
+        title: 'Story Creation Failed',
+        message: 'Insufficient permissions. Reverting changes.',
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: 'status_update',
+        targetScreen: 'UserStories',
+        targetId: newStory.id,
+      });
+    }
   };
 
   const handleAddActivity = async (newAct: Activity) => {
     setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
+    try {
+      await saveActivity(newAct);
+    } catch (err) {
+      console.error('Failed to save activity:', err);
+      setActivities(prev => prev.filter(a => a.id !== newAct.id));
+    }
   };
 
   const handleAddTeamMember = async (newMember: TeamMember) => {
     setTeam(prev => [newMember, ...prev]);
-    await saveTeamMember(newMember);
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
@@ -367,15 +409,23 @@ function AppContent() {
       time: 'Just now',
       type: 'assignment',
       detail: `Assigned to ${newMember.location || 'Sahara Agile Workspace'}`,
-      teamId: userProfile?.teamId || '',
+      teamId: userProfile?.teamId || userProfile?.uid || '',
     };
     setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
+
+    try {
+      await saveTeamMember(newMember);
+      await saveActivity(newAct);
+    } catch (err) {
+      console.error('Failed to save team member:', err);
+      setTeam(prev => prev.filter(m => m.id !== newMember.id));
+      setActivities(prev => prev.filter(a => a.id !== newAct.id));
+    }
   };
 
   const handleUpdateTeamMember = async (updatedMember: TeamMember) => {
+    const originalTeam = [...team];
     setTeam(prev => prev.map(m => m.id === updatedMember.id ? updatedMember : m));
-    await saveTeamMember(updatedMember);
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
@@ -386,13 +436,22 @@ function AppContent() {
       time: 'Just now',
       type: 'status',
       detail: `Status: ${updatedMember.permissionStatus || 'Approved'} - Team: ${updatedMember.teamName || 'General'}`,
-      teamId: userProfile?.teamId || '',
+      teamId: userProfile?.teamId || userProfile?.uid || '',
     };
     setActivities(prev => [newAct, ...prev]);
-    await saveActivity(newAct);
+
+    try {
+      await saveTeamMember(updatedMember);
+      await saveActivity(newAct);
+    } catch (err) {
+      console.error('Failed to update team member:', err);
+      setTeam(originalTeam);
+      setActivities(prev => prev.filter(a => a.id !== newAct.id));
+    }
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
+    const originalTasks = [...tasks];
     setTasks(prev =>
       prev.map(t => {
         if (t.id === taskId) {
@@ -401,11 +460,11 @@ function AppContent() {
         return t;
       })
     );
-    await updateTaskStatus(taskId, newStatus);
 
     const taskObj = tasks.find(t => t.id === taskId);
+    let newAct: Activity | null = null;
     if (taskObj) {
-      const newAct: Activity = {
+      newAct = {
         id: `ACT-${Date.now()}`,
         user: userProfile?.displayName || 'Amara Vance',
         avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
@@ -413,10 +472,22 @@ function AppContent() {
         target: `${taskObj.code} to ${newStatus.replace('_', ' ')}`,
         time: 'Just now',
         type: 'status',
-        teamId: userProfile?.teamId || ''
+        teamId: userProfile?.teamId || userProfile?.uid || ''
       };
-      setActivities(a => [newAct, ...a]);
-      await saveActivity(newAct);
+      setActivities(a => [newAct!, ...a]);
+    }
+
+    try {
+      await updateTaskStatus(taskId, newStatus);
+      if (newAct) {
+        await saveActivity(newAct);
+      }
+    } catch (err) {
+      console.error('Failed to update task status:', err);
+      setTasks(originalTasks);
+      if (newAct) {
+        setActivities(prev => prev.filter(a => a.id !== newAct!.id));
+      }
     }
   };
 

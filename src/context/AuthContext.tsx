@@ -165,6 +165,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (docSnap.exists() && !isCreatingTeam && !customRole) {
           const data = docSnap.data() as UserProfile;
+          
+          // MIGRATION: Fix empty teamId for existing users
+          if (!data.teamId || data.teamId === '') {
+            data.teamId = firebaseUser.uid;
+            await setDoc(userRef, { teamId: firebaseUser.uid }, { merge: true });
+          }
+          
           setUserProfile(data);
           if (
             data.isTeamManager ||

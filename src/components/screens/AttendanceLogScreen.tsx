@@ -81,8 +81,13 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       teamId: userProfile?.teamId || '',
     };
 
-    await saveAttendanceLog(newLog);
-    alert(`Successfully Clocked In at ${selectedStation} (${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+    try {
+      await saveAttendanceLog(newLog);
+      alert(`Successfully Clocked In at ${selectedStation} (${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+    } catch (err) {
+      console.error('Failed to clock in:', err);
+      alert('Failed to clock in due to missing permissions or network error.');
+    }
   };
 
   // Handle Clock-Out
@@ -107,9 +112,14 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       teamId: userProfile?.teamId || '',
     };
 
-    await saveAttendanceLog(updatedLog);
-    setWorkNotesInput('');
-    alert(`Successfully Clocked Out! Total shift time: ${netHours} hours (Break: ${activeLog.breakMinutes || 0}m).`);
+    try {
+      await saveAttendanceLog(updatedLog);
+      setWorkNotesInput('');
+      alert(`Successfully Clocked Out! Total shift time: ${netHours} hours (Break: ${activeLog.breakMinutes || 0}m).`);
+    } catch (err) {
+      console.error('Failed to clock out:', err);
+      alert('Failed to clock out due to missing permissions or network error.');
+    }
   };
 
   // Manager Approve Shift
@@ -123,8 +133,13 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       approvalStatus: 'approved',
       approvedBy: currentUserName,
     };
-    await saveAttendanceLog(updated);
-    if (inspectingLog?.id === log.id) setInspectingLog(updated);
+    try {
+      await saveAttendanceLog(updated);
+      if (inspectingLog?.id === log.id) setInspectingLog(updated);
+    } catch (err) {
+      console.error('Failed to approve shift:', err);
+      alert('Failed to approve shift due to missing permissions or network error.');
+    }
   };
 
   // Manager Flag Discrepancy
@@ -142,8 +157,13 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       approvedBy: currentUserName,
       managerNotes: note,
     };
-    await saveAttendanceLog(updated);
-    if (inspectingLog?.id === log.id) setInspectingLog(updated);
+    try {
+      await saveAttendanceLog(updated);
+      if (inspectingLog?.id === log.id) setInspectingLog(updated);
+    } catch (err) {
+      console.error('Failed to flag shift:', err);
+      alert('Failed to flag shift due to missing permissions or network error.');
+    }
   };
 
   // Save Manager Edited Shift
@@ -155,9 +175,14 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
     }
     if (!editingLog) return;
 
-    await saveAttendanceLog(editingLog);
-    alert(`Shift log ${editingLog.id} updated successfully.`);
-    setEditingLog(null);
+    try {
+      await saveAttendanceLog(editingLog);
+      alert(`Shift log ${editingLog.id} updated successfully.`);
+      setEditingLog(null);
+    } catch (err) {
+      console.error('Failed to save shift edit:', err);
+      alert('Failed to save shift edit due to missing permissions or network error.');
+    }
   };
 
   // Handle Manager Manual Creation of Shift
@@ -199,9 +224,14 @@ export const AttendanceLogScreen: React.FC<AttendanceLogScreenProps> = ({
       teamId: userProfile?.teamId || '',
     };
 
-    await saveAttendanceLog(newLog);
-    alert(`New shift record added for ${manualForm.userName}!`);
-    setShowManualAddModal(false);
+    try {
+      await saveAttendanceLog(newLog);
+      alert(`New shift record added for ${manualForm.userName}!`);
+      setShowManualAddModal(false);
+    } catch (err) {
+      console.error('Failed to create manual shift:', err);
+      alert('Failed to create manual shift due to missing permissions or network error.');
+    }
   };
 
   // CSV Export

@@ -321,14 +321,14 @@ const authenticateJwt = async (req: AuthenticatedRequest, res: Response, next: N
     }
 
     let role = 'Employee';
-    let teamId = '';
+    let teamId = decoded.uid;
     let userName = decoded.email || '';
     
     if (userDoc.exists) {
       const data = userDoc.data();
       console.log('[DEBUG] userDoc data:', data);
       role = data?.role || 'Employee';
-      teamId = data?.teamId || '';
+      teamId = data?.teamId || decoded.uid;
       userName = data?.displayName || userName;
     } else {
       console.log('[DEBUG] userDoc does not exist!');

@@ -95,7 +95,12 @@ export const UserStoriesScreen: React.FC<UserStoriesScreenProps> = ({
       status: newStatus,
       updatedAt: new Date().toISOString().split('T')[0],
     };
-    await saveStory(updated);
+    try {
+      await saveStory(updated);
+    } catch (err) {
+      console.error('[UserStoriesScreen] Failed to update story status:', err);
+      // Could show a toast or error here
+    }
   };
 
   const handleAddTaskToStory = (story: UserStory) => {
