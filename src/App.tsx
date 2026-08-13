@@ -111,8 +111,8 @@ function AppContent() {
 
   // Real-time Firestore Subscriptions
   useEffect(() => {
-    if (!userProfile?.teamId) return;
-    const teamId = userProfile.teamId;
+    if (!userProfile) return;
+    const teamId = userProfile.teamId || userProfile.uid;
 
     const unsubTasks = subscribeTasks(teamId, (data) => setTasks(data));
     const unsubLocs = subscribeLocations(teamId, (data) => setLocations(data));
@@ -191,7 +191,7 @@ function AppContent() {
   };
 
   const handleAddTask = async (newTask: Task) => {
-    const taskWithTeam = { ...newTask, teamId: userProfile?.teamId || '' };
+    const taskWithTeam = { ...newTask, teamId: userProfile?.teamId || userProfile?.uid || '' };
     setTasks(prev => [taskWithTeam, ...prev]);
     try {
       await saveTask(taskWithTeam);
@@ -210,7 +210,7 @@ function AppContent() {
       time: 'Just now',
       type: 'status',
       detail: `Assigned to ${newTask.assignee.name} at ${newTask.region ?? 'Unassigned region'}`,
-      teamId: userProfile?.teamId || ''
+      teamId: userProfile?.teamId || userProfile?.uid || ''
     };
     setActivities(prev => [newAct, ...prev]);
     try {
@@ -269,7 +269,7 @@ function AppContent() {
       crewCount: 4,
       lead: projectData.lead,
       temperature: '35°C',
-      teamId: userProfile?.teamId || ''
+      teamId: userProfile?.teamId || userProfile?.uid || ''
     };
     setLocations(prev => [newLoc, ...prev]);
     await saveLocation(newLoc);
@@ -285,7 +285,7 @@ function AppContent() {
       progress: projectData.status === 'completed' ? 100 : projectData.status === 'active' ? 10 : 0,
       lead: projectData.lead,
       region: projectData.region,
-      teamId: userProfile?.teamId || ''
+      teamId: userProfile?.teamId || userProfile?.uid || ''
     };
     setTimeline(prev => [newMilestone, ...prev]);
     await saveTimelineMilestone(newMilestone);
@@ -300,7 +300,7 @@ function AppContent() {
       time: 'Just now',
       type: 'location',
       detail: `Directed by ${projectData.lead} in ${projectData.region}`,
-      teamId: userProfile?.teamId || ''
+      teamId: userProfile?.teamId || userProfile?.uid || ''
     };
     setActivities(prev => [newAct, ...prev]);
     await saveActivity(newAct);

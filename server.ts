@@ -469,7 +469,7 @@ app.post('/api/auth/sync-profile', async (req, res) => {
     const displayName = customName || decodedToken.name || 'Field Operator';
     
     let assignedRole = role || 'Field Technician';
-    let teamId = reqTeamId || '';
+    let teamId = reqTeamId || uid;
     let initialPermission = 'pending';
     let assignedTeam = teamName || 'Sahara Primary Team';
     let isManagerRole = false;

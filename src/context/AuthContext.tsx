@@ -181,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           let assignedTeam = teamName || 'Sahara Primary Sector';
           let isManagerRole = isCreatingTeam || customRole === 'Operations Manager';
           let initialPermission: 'pending_review' | 'approved' | 'elevated' = isManagerRole ? 'approved' : 'pending_review';
-          let finalTeamId = teamId || '';
+          let finalTeamId = teamId || firebaseUser.uid;
 
           if (isCreatingTeam) {
             finalTeamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
