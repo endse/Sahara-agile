@@ -181,9 +181,9 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
           </div>
         </div>
       ) : (
-
-      {/* Visual Hierarchy Banner */}
-      <div className="bg-[#C49A5A]/10 border border-[#C49A5A]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#625C52]">
+        <>
+          {/* Visual Hierarchy Banner */}
+          <div className="bg-[#C49A5A]/10 border border-[#C49A5A]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#625C52]">
         <span className="material-symbols-outlined text-[#A8793A] text-lg mt-0.5">account_tree</span>
         <div className="space-y-1">
           <p className="font-bold text-[#171512]">Current Project Context: {currentProject?.name}</p>
@@ -478,6 +478,8 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
           )}
         </div>
       )}
+        </>
+      )}
 
       {/* Create Task Modal */}
       {isTaskModalOpen && currentProject && (
@@ -574,7 +576,6 @@ export const ProjectsScreen: React.FC<ProjectsScreenProps> = ({
             </form>
           </div>
         </div>
-      )}
       )}
     </div>
   );

@@ -332,7 +332,7 @@ function AppContent() {
         message: 'Insufficient permissions or network error. Reverting changes.',
         timestamp: new Date().toISOString(),
         read: false,
-        type: 'status_update',
+        type: 'status_changed',
         targetScreen: 'Projects',
         targetId: newLoc.id,
       });
@@ -380,7 +380,7 @@ function AppContent() {
         message: 'Insufficient permissions. Reverting changes.',
         timestamp: new Date().toISOString(),
         read: false,
-        type: 'status_update',
+        type: 'status_changed',
         targetScreen: 'UserStories',
         targetId: newStory.id,
       });
@@ -744,18 +744,11 @@ function AppContent() {
               )}
 
               {currentScreen === 'NewProject' && (
-                <RbacGuard
-                  requiredRole="Manager"
-                  featureTitle="New Infrastructure Project Initialization"
-                  featureDescription="Registering new field stations, allocating sector budgets, and initializing infrastructure projects requires Operations Manager permissions."
+                <NewProjectScreen
+                  team={scopedTeam}
+                  onAddProject={handleAddProject}
                   onNavigate={handleNavigate}
-                >
-                  <NewProjectScreen
-                    team={scopedTeam}
-                    onAddProject={handleAddProject}
-                    onNavigate={handleNavigate}
-                  />
-                </RbacGuard>
+                />
               )}
 
               {currentScreen === 'TaskBoardActivity' && (
