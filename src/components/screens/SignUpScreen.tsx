@@ -18,20 +18,39 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get('mode');
+    if (m === 'signup' || m === 'signin') {
+      setMode(m);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please provide a valid email and password.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (mode === 'signup') {
-        await signUpWithEmail(email, password, fullName, fieldRole);
+        if (!fullName.trim()) {
+          setErrorMsg('Please enter your full name for registration.');
+          setIsSubmitting(false);
+          return;
+        }
+        await signUpWithEmail(email.trim(), password.trim(), fullName.trim(), fieldRole);
       } else {
-        await signInWithEmail(email, password);
+        await signInWithEmail(email.trim(), password.trim());
       }
       setSubmitted(true);
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
-      }, 1000);
+      }, 800);
     } catch (err: unknown) {
       setErrorMsg(getAuthErrorMessage(err));
     } finally {
@@ -47,7 +66,7 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
       setSubmitted(true);
       setTimeout(() => {
         onNavigate('Dashboard', 'slide_down');
-      }, 1000);
+      }, 800);
     } catch (err: unknown) {
       setErrorMsg(getAuthErrorMessage(err));
     } finally {
@@ -78,11 +97,6 @@ export const SignUpScreen: React.FC<SignUpProps> = ({ onNavigate }) => {
           </div>
           <h1 className="text-2xl font-bold text-[#171512]">Sahara Agile Works</h1>
           <p className="text-xs text-[#625C52]">Sign in to your account or register a new user profile</p>
-          {USE_EMULATORS && (
-            <p className="text-[10px] text-[#8A8378] bg-[#FBF9F4] border border-[#E4DDD0] rounded-lg px-3 py-1.5">
-              Local dev mode — use email/password or Continue as Guest.
-            </p>
-          )}
         </div>
 
         {/* Mode Selector */}
