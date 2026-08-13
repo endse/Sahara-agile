@@ -528,24 +528,27 @@ app.get('/api/tasks', async (req: Request, res: Response) => {
 app.post('/api/tasks', async (req: Request, res: Response) => {
   try {
     const t = req.body;
+    if (!t || !t.title) {
+      return res.status(400).json({ success: false, error: 'Task title is required' });
+    }
     const id = t.id || `TASK-${Date.now()}`;
     await pool.query(
       `INSERT INTO tasks (id, title, code, status, priority, assignee, due_date, progress, tags, description, region, team_id, location, updated_at, time_spent, story_id, project_id, approval_status, pending_status, status_requested_by, status_requested_at, attachments)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
        ON CONFLICT (id) DO UPDATE SET
-         title = EXCLUDED.title,
-         status = EXCLUDED.status,
-         priority = EXCLUDED.priority,
-         assignee = EXCLUDED.assignee,
-         due_date = EXCLUDED.due_date,
-         progress = EXCLUDED.progress,
-         tags = EXCLUDED.tags,
-         description = EXCLUDED.description,
-         region = EXCLUDED.region,
-         team_id = EXCLUDED.team_id,
-         location = EXCLUDED.location,
-         updated_at = EXCLUDED.updated_at,
-         attachments = EXCLUDED.attachments`,
+         title = COALESCE(EXCLUDED.title, tasks.title),
+         status = COALESCE(EXCLUDED.status, tasks.status),
+         priority = COALESCE(EXCLUDED.priority, tasks.priority),
+         assignee = COALESCE(EXCLUDED.assignee, tasks.assignee),
+         due_date = COALESCE(EXCLUDED.due_date, tasks.due_date),
+         progress = COALESCE(EXCLUDED.progress, tasks.progress),
+         tags = COALESCE(EXCLUDED.tags, tasks.tags),
+         description = COALESCE(EXCLUDED.description, tasks.description),
+         region = COALESCE(EXCLUDED.region, tasks.region),
+         team_id = COALESCE(EXCLUDED.team_id, tasks.team_id),
+         location = COALESCE(EXCLUDED.location, tasks.location),
+         updated_at = COALESCE(EXCLUDED.updated_at, tasks.updated_at),
+         attachments = COALESCE(EXCLUDED.attachments, tasks.attachments)`,
       [
         id,
         t.title,

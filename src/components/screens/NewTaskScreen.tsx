@@ -76,11 +76,6 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
     const chosenAssignee = combinedTeam.find(t => t.id === assigneeId);
     const chosenLocation = locations.find(l => l.id === locationId);
 
-    if (!chosenLocation) {
-      setFormError('Please select a valid project for this task.');
-      return;
-    }
-
     const assignee = chosenAssignee
       ? { name: chosenAssignee.name, avatar: chosenAssignee.avatar, role: chosenAssignee.role }
       : {
@@ -92,7 +87,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
     const newTask: Task = {
       id: `TASK-${Date.now()}`,
       code,
-      title,
+      title: title.trim(),
       status,
       priority,
       assignee,
@@ -100,13 +95,13 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
       progress: 0,
       tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
       description,
-      region: chosenLocation.region,
+      region: chosenLocation?.region || 'Sector Operations',
       location: {
-        lat: chosenLocation.coordinates.lat,
-        lng: chosenLocation.coordinates.lng,
-        label: chosenLocation.name
+        lat: chosenLocation?.coordinates?.lat || 23.5,
+        lng: chosenLocation?.coordinates?.lng || 12.5,
+        label: chosenLocation?.name || 'Sahara Field Operations'
       },
-      projectId: chosenLocation.id,
+      projectId: chosenLocation?.id || '',
       updatedAt: 'Just now',
       timeSpent: '0h'
     };
@@ -114,57 +109,11 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
     try {
       await onAddTask(newTask);
       onNavigate('TaskBoard', 'slide_down');
-    } catch {
-      setFormError('Failed to save task. Please check your connection and try again.');
+    } catch (err: any) {
+      console.error('[NewTaskScreen] Error creating task:', err);
+      setFormError(err.message || 'Failed to save task. Please check your connection and try again.');
     }
   };
-
-  if (locations.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#F7F3EA] p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-[#E4DDD0] pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#C49A5A] text-[#0D0D0B] flex items-center justify-center shadow-xs">
-              <span className="material-symbols-outlined text-xl">add_task</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#171512]">New Task</h1>
-              <p className="text-xs text-[#625C52]">Create a new sprint task and assign team lead</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onNavigate('TaskBoard', 'slide_down')}
-            className="p-2 rounded-xl bg-white hover:bg-[#FBF9F4] text-[#625C52] transition-colors border border-[#E4DDD0] flex items-center gap-2 text-xs font-semibold"
-          >
-            <span className="material-symbols-outlined text-base">close</span>
-            <span className="hidden sm:inline">Cancel</span>
-          </button>
-        </div>
-
-        {/* Empty State: Tasks need a parent project */}
-        <div className="bg-white border border-[#E4DDD0] rounded-2xl p-10 flex flex-col items-center text-center space-y-4 shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-[#C49A5A]/15 text-[#A8793A] flex items-center justify-center border border-[#C49A5A]/30">
-            <span className="material-symbols-outlined text-3xl">account_tree</span>
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-[#171512]">No Projects Available Yet</h2>
-            <p className="text-xs text-[#625C52] max-w-sm mx-auto">
-              Tasks must be linked to a parent project so they appear in the project hierarchy, map, and timeline. Create a project first to continue.
-            </p>
-          </div>
-          <button
-            onClick={() => onNavigate('NewProject', 'slide_up')}
-            className="bg-[#C49A5A] hover:bg-[#A8793A] text-[#0D0D0B] px-5 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-base">add</span>
-            <span>Create Project</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F7F3EA] p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
@@ -285,6 +234,7 @@ export const NewTaskScreen: React.FC<NewTaskProps> = ({
               onChange={(e) => { setLocationId(e.target.value); setFormError(null); }}
               className="w-full bg-[#FBF9F4] border border-[#E4DDD0] focus:border-[#C49A5A] rounded-xl px-4 py-2.5 text-xs font-medium text-[#171512] outline-none transition-colors"
             >
+              <option value="">Standalone / Unlinked Task</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name} ({l.region})
