@@ -197,6 +197,27 @@ export async function initDb() {
         status TEXT,
         invite_code TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        message TEXT,
+        timestamp TEXT,
+        read BOOLEAN DEFAULT false,
+        type TEXT,
+        target_screen TEXT,
+        target_id TEXT,
+        team_id TEXT,
+        user_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        created_by TEXT,
+        created_at TEXT,
+        manager_uid TEXT
+      );
     `);
     console.log('[neon-db] PostgreSQL tables verified/created successfully.');
   } catch (err) {
@@ -1076,6 +1097,104 @@ app.post('/api/invitations', async (req: Request, res: Response) => {
       ]
     );
     res.status(201).json({ success: true, data: { ...inv, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- NOTIFICATIONS API ---
+
+app.get('/api/notifications', async (req: Request, res: Response) => {
+  try {
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM notifications WHERE team_id = $1 ORDER BY timestamp DESC', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM notifications ORDER BY timestamp DESC');
+    }
+    const notifications = result.rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      message: r.message,
+      timestamp: r.timestamp,
+      read: r.read,
+      type: r.type,
+      targetScreen: r.target_screen,
+      targetId: r.target_id,
+      teamId: r.team_id,
+      userId: r.user_id,
+    }));
+    res.json({ success: true, count: notifications.length, data: notifications });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/notifications', async (req: Request, res: Response) => {
+  try {
+    const n = req.body;
+    const id = n.id || `NOTIF-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO notifications (id, title, message, timestamp, read, type, target_screen, target_id, team_id, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (id) DO UPDATE SET
+         read = EXCLUDED.read`,
+      [
+        id,
+        n.title || 'Notification',
+        n.message || '',
+        n.timestamp || new Date().toISOString(),
+        n.read || false,
+        n.type || 'task_created',
+        n.targetScreen || null,
+        n.targetId || null,
+        n.teamId || '',
+        n.userId || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...n, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- TEAMS API ---
+
+app.get('/api/teams', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM teams');
+    const teams = result.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+      managerUid: r.manager_uid,
+    }));
+    res.json({ success: true, count: teams.length, data: teams });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/teams', async (req: Request, res: Response) => {
+  try {
+    const t = req.body;
+    const id = t.id || `TEAM-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO teams (id, name, created_by, created_at, manager_uid)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name`,
+      [
+        id,
+        t.name || 'New Team',
+        t.createdBy || 'Manager',
+        t.createdAt || new Date().toISOString(),
+        t.managerUid || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...t, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
