@@ -491,6 +491,19 @@ function AppContent() {
     }
   };
 
+  const handleUpdateTaskAttachments = async (taskId: string, attachments: TaskAttachment[]) => {
+    setTasks(prev =>
+      prev.map(t => {
+        if (t.id === taskId) {
+          const updated = { ...t, attachments };
+          saveTask(updated).catch(err => console.error('Failed to save task attachments:', err));
+          return updated;
+        }
+        return t;
+      })
+    );
+  };
+
   // Motion variants for transition types
   const getVariants = () => {
     switch (transition) {
@@ -758,6 +771,9 @@ function AppContent() {
                   selectedTask={selectedTask}
                   onNavigate={handleNavigate}
                   onAddActivity={handleAddActivity}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onUpdateTaskAttachments={handleUpdateTaskAttachments}
+                  activeRole={activeRole}
                 />
               )}
 

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ScreenId, Task, Activity, TaskAttachment } from '../../types';
 import { getTaskDeadlineInfo } from '../../lib/deadlineUtils';
 import { TaskAttachmentsManager } from '../TaskAttachmentsManager';
+import { useAuth } from '../../context/AuthContext';
+import { uploadTaskAttachment } from '../../services/storageService';
 
 interface TaskBoardActivityProps {
   tasks: Task[];
@@ -9,6 +11,7 @@ interface TaskBoardActivityProps {
   selectedTask?: Task | null;
   onNavigate: (screen: ScreenId, transition?: 'none' | 'push' | 'push_back' | 'slide_up') => void;
   onAddActivity: (act: Activity) => void;
+  onUpdateTaskStatus?: (taskId: string, newStatus: Task['status']) => void;
   onUpdateTaskAttachments?: (taskId: string, attachments: TaskAttachment[]) => void;
   onApproveTaskStatus?: (taskId: string) => void;
   onRejectTaskStatus?: (taskId: string) => void;
@@ -21,13 +24,28 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
   selectedTask: initialSelectedTask,
   onNavigate,
   onAddActivity,
+  onUpdateTaskStatus,
   onUpdateTaskAttachments,
   onApproveTaskStatus,
   onRejectTaskStatus,
   activeRole = 'Manager'
 }) => {
+  const { userProfile } = useAuth();
+  const commentFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTask, setSelectedTask] = useState<Task>(initialSelectedTask || tasks[0]);
   const [newComment, setNewComment] = useState('');
+  const [isAttaching, setIsAttaching] = useState(false);
+
+  useEffect(() => {
+    if (initialSelectedTask) {
+      setSelectedTask(initialSelectedTask);
+    } else if (tasks.length > 0 && (!selectedTask || !tasks.some(t => t.id === selectedTask.id))) {
+      setSelectedTask(tasks[0]);
+    }
+  }, [initialSelectedTask, tasks]);
+
+  const userName = userProfile?.displayName || 'Field Operator';
+  const userAvatar = userProfile?.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
 
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +53,8 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
 
     const newAct: Activity = {
       id: `ACT-${Date.now()}`,
-      user: 'Amara Vance',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      user: userName,
+      avatar: userAvatar,
       action: 'posted comment on',
       target: selectedTask ? `${selectedTask.code} (${selectedTask.title})` : 'Sahara Board',
       time: 'Just now',
@@ -46,6 +64,62 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
 
     onAddActivity(newAct);
     setNewComment('');
+  };
+
+  const handleStatusChange = (newStatus: Task['status']) => {
+    if (!selectedTask) return;
+    const updated = { ...selectedTask, status: newStatus };
+    setSelectedTask(updated);
+
+    if (onUpdateTaskStatus) {
+      onUpdateTaskStatus(selectedTask.id, newStatus);
+    }
+
+    const newAct: Activity = {
+      id: `ACT-${Date.now()}`,
+      user: userName,
+      avatar: userAvatar,
+      action: 'updated status of',
+      target: `${selectedTask.code} to ${newStatus.replace('_', ' ')}`,
+      time: 'Just now',
+      type: 'status'
+    };
+    onAddActivity(newAct);
+  };
+
+  const handleCommentFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !selectedTask) return;
+    setIsAttaching(true);
+    try {
+      const file = files[0];
+      const newAtt = await uploadTaskAttachment(selectedTask.id, file, userName);
+      const existing = selectedTask.attachments || [];
+      const updatedAtts = [...existing, newAtt];
+
+      setSelectedTask((prev) => ({ ...prev, attachments: updatedAtts }));
+      if (onUpdateTaskAttachments) {
+        onUpdateTaskAttachments(selectedTask.id, updatedAtts);
+      }
+
+      const mockFileAct: Activity = {
+        id: `ACT-FILE-${Date.now()}`,
+        user: userName,
+        avatar: userAvatar,
+        action: 'uploaded telemetry file attachment to',
+        target: `${selectedTask.code} (${selectedTask.title})`,
+        time: 'Just now',
+        type: 'file',
+        detail: `${file.name} (${(file.size / 1024).toFixed(1)} KB)`
+      };
+      onAddActivity(mockFileAct);
+    } catch (err) {
+      console.error('Error uploading telemetry log:', err);
+    } finally {
+      setIsAttaching(false);
+      if (commentFileInputRef.current) {
+        commentFileInputRef.current.value = '';
+      }
+    }
   };
 
   const selectedTaskInfo = selectedTask ? getTaskDeadlineInfo(selectedTask) : null;
@@ -116,6 +190,23 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
               <div className="space-y-2">
                 <h2 className="font-headline text-2xl font-bold text-[#3a302a]">{selectedTask.title}</h2>
                 <p className="text-xs text-[#605850] leading-relaxed">{selectedTask.description}</p>
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <span className="text-xs font-bold text-[#78706a]">Update Status:</span>
+                  {(['todo', 'in_progress', 'review', 'done'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => handleStatusChange(st)}
+                      className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition-all ${
+                        selectedTask.status === st
+                          ? 'bg-[#c2652a] text-white shadow-2xs scale-[1.02]'
+                          : 'bg-[#faf5ee] border border-[#d8d0c8] text-[#3a302a] hover:bg-[#ffffff]'
+                      }`}
+                    >
+                      {st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Pending Approval Manager Banner */}
@@ -248,6 +339,12 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
 
             {/* Comment Post Form */}
             <form onSubmit={handlePostComment} className="space-y-2">
+              <input
+                ref={commentFileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => handleCommentFileUpload(e.target.files)}
+              />
               <textarea
                 rows={2}
                 value={newComment}
@@ -258,23 +355,12 @@ export const TaskBoardActivityScreen: React.FC<TaskBoardActivityProps> = ({
               <div className="flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => {
-                    const mockFileAct: Activity = {
-                      id: `ACT-FILE-${Date.now()}`,
-                      user: 'Amara Vance',
-                      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-                      action: 'uploaded API performance profile log to',
-                      target: selectedTask?.code || 'Task Board',
-                      time: 'Just now',
-                      type: 'file',
-                      detail: 'API_Telemetry_Metrics_20261024.json (8.4 MB)'
-                    };
-                    onAddActivity(mockFileAct);
-                  }}
+                  onClick={() => commentFileInputRef.current?.click()}
+                  disabled={isAttaching}
                   className="text-xs font-semibold text-[#c2652a] hover:underline flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-base">attach_file</span>
-                  <span>Attach Telemetry Log</span>
+                  <span>{isAttaching ? 'Uploading Log...' : 'Attach Telemetry Log'}</span>
                 </button>
 
                 <button
