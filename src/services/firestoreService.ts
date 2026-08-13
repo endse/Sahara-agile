@@ -1,185 +1,246 @@
-import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { Task, TaskAttachment, Activity, TeamMember, TimelineMilestone, SiteLocation, UserStory, AttendanceLog, AsyncJob, TeamInvitation } from '../types';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+const fetchJson = async (url: string, options?: RequestInit) => {
+  const res = await fetch(`${API_BASE}${url}`, {
+    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+    ...options,
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API Request failed (${res.status}): ${errorText}`);
+  }
+  return res.json();
+};
 
 // --- TASKS ---
 export const subscribeTasks = (teamId: string, onData: (tasks: Task[]) => void) => {
-  const q = query(collection(db, 'tasks'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: Task[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as Task);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/tasks?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching tasks:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveTask = async (task: Task) => {
   try {
-    await setDoc(doc(db, 'tasks', task.id), task, { merge: true });
+    await fetchJson('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
   } catch (err) {
-    console.error('[firestore] Failed to save task:', err);
+    console.error('[api] Failed to save task:', err);
     throw err;
   }
 };
 
 export const updateTaskStatus = async (taskId: string, status: Task['status']) => {
-  await updateDoc(doc(db, 'tasks', taskId), { status });
+  await fetchJson(`/api/tasks/${taskId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
 };
 
 export const updateTaskAttachments = async (taskId: string, attachments: TaskAttachment[]) => {
-  await updateDoc(doc(db, 'tasks', taskId), { attachments });
+  await fetchJson('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ id: taskId, attachments }),
+  });
 };
 
 // --- LOCATIONS (PROJECTS) ---
 export const subscribeLocations = (teamId: string, onData: (locations: SiteLocation[]) => void) => {
-  const q = query(collection(db, 'locations'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: SiteLocation[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as SiteLocation);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/projects?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching locations:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveLocation = async (location: SiteLocation) => {
-  await setDoc(doc(db, 'locations', location.id), location, { merge: true });
+  await fetchJson('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify(location),
+  });
 };
 
 // --- ACTIVITIES ---
 export const subscribeActivities = (teamId: string, onData: (activities: Activity[]) => void) => {
-  const q = query(collection(db, 'activities'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: Activity[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as Activity);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/activities?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching activities:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveActivity = async (activity: Activity) => {
-  await setDoc(doc(db, 'activities', activity.id), activity, { merge: true });
+  await fetchJson('/api/activities', {
+    method: 'POST',
+    body: JSON.stringify(activity),
+  });
 };
 
 // --- TEAM ---
 export const subscribeTeam = (teamId: string, onData: (team: TeamMember[]) => void) => {
-  const q = query(collection(db, 'team'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: TeamMember[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as TeamMember);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/team?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching team:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveTeamMember = async (member: TeamMember) => {
-  await setDoc(doc(db, 'team', member.id), member, { merge: true });
+  await fetchJson('/api/team', {
+    method: 'POST',
+    body: JSON.stringify(member),
+  });
 };
 
 // --- TIMELINE ---
 export const subscribeTimeline = (teamId: string, onData: (timeline: TimelineMilestone[]) => void) => {
-  const q = query(collection(db, 'timeline'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: TimelineMilestone[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as TimelineMilestone);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/timeline?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching timeline:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveTimelineMilestone = async (item: TimelineMilestone) => {
-  await setDoc(doc(db, 'timeline', item.id), item, { merge: true });
+  await fetchJson('/api/timeline', {
+    method: 'POST',
+    body: JSON.stringify(item),
+  });
 };
 
 // --- USER STORIES ---
 export const subscribeStories = (teamId: string, onData: (stories: UserStory[]) => void) => {
-  const q = query(collection(db, 'stories'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: UserStory[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as UserStory);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/stories?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching stories:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveStory = async (story: UserStory) => {
-  await setDoc(doc(db, 'stories', story.id), story, { merge: true });
+  await fetchJson('/api/stories', {
+    method: 'POST',
+    body: JSON.stringify(story),
+  });
 };
 
 // --- ATTENDANCE & WORK LOGS ---
 export const subscribeAttendance = (teamId: string, onData: (logs: AttendanceLog[]) => void) => {
-  const q = query(collection(db, 'attendance'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: AttendanceLog[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as AttendanceLog);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/attendance?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching attendance:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveAttendanceLog = async (log: AttendanceLog) => {
-  await setDoc(doc(db, 'attendance', log.id), log, { merge: true });
+  await fetchJson('/api/attendance', {
+    method: 'POST',
+    body: JSON.stringify(log),
+  });
 };
 
 // --- ASYNC JOBS ---
 export const subscribeAsyncJobs = (teamId: string, onData: (jobs: AsyncJob[]) => void) => {
-  const q = query(collection(db, 'async_jobs'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: AsyncJob[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as AsyncJob);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/async-jobs?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching async jobs:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const saveAsyncJob = async (job: AsyncJob) => {
-  await setDoc(doc(db, 'async_jobs', job.id), job, { merge: true });
+  await fetchJson('/api/async-jobs', {
+    method: 'POST',
+    body: JSON.stringify(job),
+  });
 };
 
 // --- TEAM INVITATIONS ---
 export const saveInvitation = async (invitation: TeamInvitation) => {
-  await setDoc(doc(db, 'invitations', invitation.id), invitation, { merge: true });
+  await fetchJson('/api/invitations', {
+    method: 'POST',
+    body: JSON.stringify(invitation),
+  });
 };
 
 export const subscribeInvitations = (teamId: string, onData: (invites: TeamInvitation[]) => void) => {
-  const q = query(collection(db, 'invitations'), where('teamId', '==', teamId));
-  return onSnapshot(q, (snapshot) => {
-    const list: TeamInvitation[] = [];
-    snapshot.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as TeamInvitation);
-    });
-    onData(list);
-  });
+  const load = async () => {
+    try {
+      const res = await fetchJson(`/api/invitations?teamId=${encodeURIComponent(teamId)}`);
+      if (res.data) onData(res.data);
+    } catch (err) {
+      console.warn('[api] Error fetching invitations:', err);
+    }
+  };
+  load();
+  const intervalId = setInterval(load, 4000);
+  return () => clearInterval(intervalId);
 };
 
 export const findInvitationByEmail = async (email: string): Promise<TeamInvitation | null> => {
   try {
-    const snap = await getDocs(collection(db, 'invitations'));
-    let found: TeamInvitation | null = null;
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() as TeamInvitation;
-      if (data.email.toLowerCase().trim() === email.toLowerCase().trim() && data.status === 'pending') {
-        found = { id: docSnap.id, ...data };
-      }
-    });
-    return found;
+    const res = await fetchJson('/api/invitations');
+    if (res.data) {
+      const found = res.data.find(
+        (i: TeamInvitation) => i.email.toLowerCase().trim() === email.toLowerCase().trim() && i.status === 'pending'
+      );
+      return found || null;
+    }
+    return null;
   } catch (err) {
     console.error('Error finding invitation by email:', err);
     return null;
@@ -187,5 +248,8 @@ export const findInvitationByEmail = async (email: string): Promise<TeamInvitati
 };
 
 export const acceptInvitation = async (inviteId: string) => {
-  await updateDoc(doc(db, 'invitations', inviteId), { status: 'accepted' });
+  await fetchJson('/api/invitations', {
+    method: 'POST',
+    body: JSON.stringify({ id: inviteId, status: 'accepted' }),
+  });
 };

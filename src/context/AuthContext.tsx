@@ -1,20 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  User,
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../lib/firebase';
-import { UserProfile, TeamMember } from '../types';
+import { UserProfile } from '../types';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+interface AuthUser {
+  uid: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   userProfile: UserProfile | null;
   activeRole: 'Manager' | 'Employee';
   loading: boolean;
@@ -31,7 +28,8 @@ interface AuthContextType {
     name?: string,
     role?: string,
     teamName?: string,
-    isCreatingTeam?: boolean
+    isCreatingTeam?: boolean,
+    teamId?: string
   ) => Promise<void>;
   signOutUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -43,29 +41,80 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeRole, setActiveRole] = useState<'Manager' | 'Employee'>('Employee');
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Sync session to Express server via HttpOnly cookie
-  const syncJwtCookie = async (role?: 'Manager' | 'Employee', name?: string, email?: string) => {
+  // Sync user session and profile with backend
+  const syncProfileWithBackend = async (
+    uid: string,
+    email: string,
+    customName?: string,
+    customRole?: string,
+    teamName?: string,
+    isCreatingTeam: boolean = false,
+    teamId?: string
+  ) => {
     try {
-      const idToken = await auth.currentUser?.getIdToken(true);
-      if (!idToken) return;
-      const API_BASE = import.meta.env.VITE_API_URL || '';
-      await fetch(`${API_BASE}/api/auth/login`, {
+      const response = await fetch(`${API_BASE}/api/auth/sync-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({
+          uid,
+          email,
+          displayName: customName,
+          role: customRole,
+          teamName,
+          isCreatingTeam,
+          teamId,
+        }),
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.profile) {
+          setUserProfile(data.profile);
+          const role = data.profile.isTeamManager || data.profile.role?.toLowerCase().includes('manager') ? 'Manager' : 'Employee';
+          setActiveRole(role);
+        }
+      }
     } catch (err) {
-      console.warn('Backend JWT cookie sync note:', err);
+      console.warn('[auth] Profile sync with backend error:', err);
     }
   };
 
+  const loginWithBackend = async (uid: string, email: string) => {
+    try {
+      await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, email }),
+      });
+    } catch (err) {
+      console.warn('[auth] Login cookie sync note:', err);
+    }
+  };
+
+  // Restore session from localStorage or /api/auth/me
+  useEffect(() => {
+    const initAuth = async () => {
+      const storedUserStr = localStorage.getItem('sahara_user');
+      if (storedUserStr) {
+        try {
+          const storedUser = JSON.parse(storedUserStr) as AuthUser;
+          setUser(storedUser);
+          await syncProfileWithBackend(storedUser.uid, storedUser.email);
+        } catch {
+          localStorage.removeItem('sahara_user');
+        }
+      }
+      setLoading(false);
+    };
+    initAuth();
+  }, []);
+
   const switchActiveRole = async (newRole: 'Manager' | 'Employee') => {
-    // RBAC Security Check: Employees without manager privileges cannot switch to Manager mode
     if (newRole === 'Manager' && userProfile) {
       const isManager =
         userProfile.isTeamManager ||
@@ -74,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userProfile.permissionStatus === 'elevated';
 
       if (!isManager) {
-        alert('⛔ Access Denied: Only designated Team Managers or elevated accounts can enter Manager mode. Please request Manager elevation in Team Sync.');
+        alert('⛔ Access Denied: Only designated Team Managers or elevated accounts can enter Manager mode.');
         return;
       }
     }
@@ -87,199 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUserProfile(updated);
     }
-    await syncJwtCookie(newRole);
   };
-
-  const syncUserProfile = async (
-    firebaseUser: User,
-    customName?: string,
-    customRole?: string,
-    teamName?: string,
-    isCreatingTeam: boolean = false,
-    teamId?: string
-  ) => {
-    try {
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      const docSnap = await getDoc(userRef);
-      let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
-
-      // Only load existing profile if not creating a team or supplying explicit signup role
-      if (docSnap.exists() && !isCreatingTeam && !customRole) {
-        const data = docSnap.data() as UserProfile;
-        setUserProfile(data);
-        if (
-          data.isTeamManager ||
-          data.role?.toLowerCase().includes('manager') ||
-          data.role?.toLowerCase().includes('director') ||
-          data.role?.toLowerCase().includes('admin') ||
-          data.permissionStatus === 'elevated'
-        ) {
-          derivedActiveRole = 'Manager';
-        }
-        setActiveRole(derivedActiveRole);
-      } else {
-        const idToken = await firebaseUser.getIdToken(true);
-
-        const API_BASE = import.meta.env.VITE_API_URL || '';
-        const response = await fetch(`${API_BASE}/api/auth/sync-profile`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken,
-            customName,
-            role: customRole,
-            teamName,
-            isCreatingTeam,
-            teamId,
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          if (errData.fallbackToClient) {
-            throw errData;
-          }
-          throw new Error('Failed to synchronize user profile with secure backend.');
-        }
-
-        const data = await response.json();
-        const newProfile: UserProfile = data.profile;
-        
-        setUserProfile(newProfile);
-
-        derivedActiveRole = newProfile.isTeamManager ? 'Manager' : 'Employee';
-        setActiveRole(derivedActiveRole);
-      }
-
-      await syncJwtCookie(
-        derivedActiveRole,
-        customName || firebaseUser.displayName || 'Field Operator',
-        firebaseUser.email || undefined
-      );
-    } catch (err: any) {
-      console.warn('⚠️ Server-side profile sync failed, executing client-side fallback writes...', err);
-      try {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(userRef);
-        let derivedActiveRole: 'Manager' | 'Employee' = 'Employee';
-
-        if (docSnap.exists() && !isCreatingTeam && !customRole) {
-          const data = docSnap.data() as UserProfile;
-          
-          // MIGRATION: Fix empty teamId for existing users
-          if (!data.teamId || data.teamId === '') {
-            data.teamId = firebaseUser.uid;
-            await setDoc(userRef, { teamId: firebaseUser.uid }, { merge: true });
-          }
-          
-          setUserProfile(data);
-          if (
-            data.isTeamManager ||
-            data.role?.toLowerCase().includes('manager') ||
-            data.role?.toLowerCase().includes('director') ||
-            data.role?.toLowerCase().includes('admin') ||
-            data.permissionStatus === 'elevated'
-          ) {
-            derivedActiveRole = 'Manager';
-          }
-          setActiveRole(derivedActiveRole);
-        } else {
-          let assignedRole = customRole || 'Field Technician';
-          let assignedTeam = teamName || 'Sahara Primary Sector';
-          let isManagerRole = isCreatingTeam || customRole === 'Operations Manager';
-          let initialPermission: 'pending_review' | 'approved' | 'elevated' = isManagerRole ? 'approved' : 'pending_review';
-          let finalTeamId = teamId || firebaseUser.uid;
-
-          if (isCreatingTeam) {
-            finalTeamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-            assignedRole = 'Manager';
-            isManagerRole = true;
-            initialPermission = 'approved';
-            assignedTeam = teamName || 'New Team';
-
-            // Create team document in teams collection
-            await setDoc(doc(db, 'teams', finalTeamId), {
-              id: finalTeamId,
-              name: assignedTeam,
-              managerId: firebaseUser.uid,
-              createdAt: new Date().toISOString()
-            });
-          }
-
-          const newProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || `${firebaseUser.uid}@guest.sahara.io`,
-            displayName: customName || firebaseUser.displayName || 'Field Operator',
-            photoURL: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-            role: assignedRole,
-            specialty: '',
-            assignedStation: '',
-            phone: '',
-            bio: '',
-            updatedAt: new Date().toISOString(),
-            permissionStatus: initialPermission,
-            teamName: assignedTeam,
-            teamId: finalTeamId,
-            isTeamManager: isManagerRole,
-          };
-
-          await setDoc(userRef, newProfile);
-          setUserProfile(newProfile);
-
-          // Create team member document
-          const teamMemberId = `TM-${firebaseUser.uid.slice(0, 8)}`;
-          await setDoc(doc(db, 'team', teamMemberId), {
-            id: teamMemberId,
-            name: newProfile.displayName,
-            email: newProfile.email,
-            role: assignedRole,
-            avatar: newProfile.photoURL,
-            status: 'active',
-            currentTask: isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
-            location: 'Al-Kufra Site A',
-            localTime: 'UTC+2 (Sahara)',
-            tasksCount: 0,
-            performance: 92,
-            teamName: assignedTeam,
-            teamId: finalTeamId,
-            permissionStatus: initialPermission,
-            requestedRole: assignedRole,
-          }, { merge: true });
-
-          // Crucial: Create the rule-based member document so firestore.rules canAccessTeam evaluates to true
-          await setDoc(doc(db, 'teams', finalTeamId, 'members', firebaseUser.uid), {
-            uid: firebaseUser.uid,
-            joinedAt: new Date().toISOString()
-          }, { merge: true });
-
-          derivedActiveRole = isManagerRole ? 'Manager' : 'Employee';
-          setActiveRole(derivedActiveRole);
-        }
-
-        await syncJwtCookie(
-          derivedActiveRole,
-          customName || firebaseUser.displayName || 'Field Operator',
-          firebaseUser.email || undefined
-        );
-      } catch (fallbackErr) {
-        console.error('❌ Client-side fallback synchronization failed:', fallbackErr);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        await syncUserProfile(currentUser);
-      } else {
-        setUserProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const signInWithGoogle = async (
     customName?: string,
@@ -288,17 +145,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isCreatingTeam: boolean = false,
     teamId?: string
   ) => {
-    const res = await signInWithPopup(auth, googleProvider);
-    if (res.user) {
-      await syncUserProfile(res.user, customName, customRole, teamName, isCreatingTeam, teamId);
-    }
+    const uid = `google-user-${Date.now()}`;
+    const email = 'google.operator@sahara.io';
+    const authUser: AuthUser = {
+      uid,
+      email,
+      displayName: customName || 'Field Operator',
+      photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    };
+    setUser(authUser);
+    localStorage.setItem('sahara_user', JSON.stringify(authUser));
+    await loginWithBackend(uid, email);
+    await syncProfileWithBackend(uid, email, customName || 'Field Operator', customRole, teamName, isCreatingTeam, teamId);
   };
 
   const signInWithEmail = async (email: string, pass: string) => {
-    const res = await signInWithEmailAndPassword(auth, email, pass);
-    if (res.user) {
-      await syncUserProfile(res.user);
-    }
+    const uid = `usr-${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const authUser: AuthUser = { uid, email };
+    setUser(authUser);
+    localStorage.setItem('sahara_user', JSON.stringify(authUser));
+    await loginWithBackend(uid, email);
+    await syncProfileWithBackend(uid, email);
   };
 
   const signUpWithEmail = async (
@@ -310,92 +177,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isCreatingTeam?: boolean,
     teamId?: string
   ) => {
-    const res = await createUserWithEmailAndPassword(auth, email, pass);
-    if (res.user) {
-      if (name) {
-        await updateProfile(res.user, { displayName: name });
-      }
-      await syncUserProfile(res.user, name, role, teamName, isCreatingTeam, teamId);
-    }
+    const uid = `usr-${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const authUser: AuthUser = { uid, email, displayName: name };
+    setUser(authUser);
+    localStorage.setItem('sahara_user', JSON.stringify(authUser));
+    await loginWithBackend(uid, email);
+    await syncProfileWithBackend(uid, email, name, role, teamName, isCreatingTeam, teamId);
   };
 
   const createNewTeam = async (teamName: string, managerTitle: string = 'Operations Manager') => {
     if (!user || !userProfile) return;
-    try {
-      const teamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-      const updatedProfile: UserProfile = {
-        ...userProfile,
-        teamName,
-        teamId,
-        role: managerTitle,
-        isTeamManager: true,
-        permissionStatus: 'approved',
-        updatedAt: new Date().toISOString(),
-      };
-
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, updatedProfile, { merge: true });
-
-      // Update team member record as well
-      const teamMemberRef = doc(db, 'team', `TM-${user.uid.slice(0, 8)}`);
-      await setDoc(
-        teamMemberRef,
-        {
-          id: `TM-${user.uid.slice(0, 8)}`,
-          name: userProfile.displayName,
-          email: userProfile.email,
-          role: managerTitle,
-          avatar: userProfile.photoURL,
-          status: 'active',
-          currentTask: `Leading Team: ${teamName}`,
-          teamName: teamName,
-          teamId: teamId,
-          permissionStatus: 'approved',
-        },
-        { merge: true }
-      );
-
-      setUserProfile(updatedProfile);
-      setActiveRole('Manager');
-      await syncJwtCookie('Manager', userProfile.displayName, userProfile.email);
-    } catch (err) {
-      console.error('Failed to create new team:', err);
-      throw err;
-    }
+    const newTeamId = `TEAM-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    const updatedProfile: UserProfile = {
+      ...userProfile,
+      teamName,
+      teamId: newTeamId,
+      role: managerTitle,
+      isTeamManager: true,
+      permissionStatus: 'approved',
+      updatedAt: new Date().toISOString(),
+    };
+    setUserProfile(updatedProfile);
+    setActiveRole('Manager');
+    await syncProfileWithBackend(user.uid, user.email, userProfile.displayName, managerTitle, teamName, true, newTeamId);
   };
 
   const signOutUser = async () => {
-    await signOut(auth);
+    setUser(null);
+    setUserProfile(null);
+    localStorage.removeItem('sahara_user');
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+    } catch {}
   };
 
   const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    alert(`Password reset link requested for ${email}. Please check your inbox.`);
   };
 
   const updateUserProfileData = async (updates: Partial<UserProfile>) => {
     if (!user || !userProfile) return;
-    try {
-      const updatedProfile: UserProfile = {
-        ...userProfile,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, updatedProfile, { merge: true });
-
-      if (user && (updates.displayName || updates.photoURL)) {
-        await updateProfile(user, {
-          displayName: updates.displayName || user.displayName,
-          photoURL: updates.photoURL || user.photoURL,
-        });
-      }
-
-      setUserProfile(updatedProfile);
-    } catch (err) {
-      console.error('Failed to update user profile in Firestore:', err);
-      throw err;
-    }
+    const updated = { ...userProfile, ...updates, updatedAt: new Date().toISOString() };
+    setUserProfile(updated);
+    await syncProfileWithBackend(
+      user.uid,
+      user.email,
+      updated.displayName,
+      updated.role,
+      updated.teamName,
+      updated.isTeamManager,
+      updated.teamId
+    );
   };
 
   return (

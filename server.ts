@@ -1,249 +1,214 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
-import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, Query } from 'firebase-admin/firestore';
-import { globalJobQueue } from './src/services/jobQueueService';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
+import pg from 'pg';
+import { globalJobQueue } from './src/services/jobQueueService';
 
-import * as fs from 'fs';
-import { spawn, ChildProcess } from 'child_process';
-import net from 'net';
+const { Pool } = pg;
 
-// Initialize Firebase Admin
-if (!getApps().length) {
-  const serviceAccountPath = path.resolve('service-account.json');
-  
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      initializeApp({
-        credential: cert(sa),
-        projectId: sa.project_id || 'temp-418609',
-      });
-    } catch (e) {
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable', e);
-      initializeApp({ projectId: 'temp-418609' });
-    }
-  } else if (fs.existsSync(serviceAccountPath)) {
-    const sa = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-    if (sa.private_key) {
-      initializeApp({
-        credential: cert(sa),
-        projectId: sa.project_id || 'temp-418609',
-      });
-    } else {
-      initializeApp({ projectId: 'temp-418609' });
-    }
-  } else {
-    initializeApp({ projectId: 'temp-418609' });
-  }
-}
-const appInstance = getApp();
-let db: any;
+const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_9OV6ndtMuxsj@ep-summer-frost-azhn3clc-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
 
-if (process.env.NODE_ENV === 'test') {
-  console.warn('⚠️ Test environment detected. Using lightweight in-memory mock for Firestore.');
-  const memoryStore: Record<string, Record<string, any>> = {};
-  
-  const createMockCollection = (name: string) => {
-    if (!memoryStore[name]) memoryStore[name] = {};
-    const coll = memoryStore[name];
-    
-    const chainable = {
-      doc: (id?: string) => {
-        const docId = id || 'MOCK-' + Math.random().toString(36).substr(2, 9);
-        return {
-          id: docId,
-          get: async () => ({ exists: !!coll[docId], id: docId, data: () => coll[docId] }),
-          set: async (data: any) => { coll[docId] = data; },
-          update: async (data: any) => { coll[docId] = { ...coll[docId], ...data }; },
-          delete: async () => { delete coll[docId]; }
-        };
-      },
-      add: async (data: any) => {
-        const id = 'MOCK-' + Math.random().toString(36).substr(2, 9);
-        coll[id] = data;
-        return { id };
-      },
-      get: async () => {
-        const docs = Object.entries(coll).map(([id, data]) => ({ id, data: () => data, exists: true }));
-        return { empty: docs.length === 0, size: docs.length, docs };
-      },
-      where: () => chainable,
-      orderBy: () => chainable,
-      limit: () => chainable,
-      count: () => ({ get: async () => ({ data: () => ({ count: Object.keys(coll).length }) }) })
-    };
-    return chainable;
-  };
+export const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false }
+});
 
-  db = {
-    collection: (name: string) => createMockCollection(name),
-    runTransaction: async (cb: any) => {
-      // Mock transaction
-      const t = {
-        get: async (ref: any) => ref.get(),
-        set: (ref: any, data: any) => ref.set(data),
-        update: (ref: any, data: any) => ref.update(data),
-        delete: (ref: any) => ref.delete()
-      };
-      return cb(t);
-    }
-  };
-  
-  // Pre-seed some required data for tests
-  memoryStore['users'] = {
-    'fake-uid-for-test': {
-      role: 'Manager',
-      teamId: 'TEAM-CI',
-      displayName: 'Test Manager CI'
-    }
-  };
-} else {
-  // Check if we have real service account credentials
-  const serviceAccountPath = path.resolve('service-account.json');
-  const hasEnvCredentials = (() => {
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) return false;
-    try { return !!JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT).private_key; } catch { return false; }
-  })();
-  const hasCredentials = hasEnvCredentials || (fs.existsSync(serviceAccountPath) && (() => {
-    try { return !!JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8')).private_key; } catch { return false; }
-  })());
-  const hasADC = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+// Initialize PostgreSQL database tables
+export async function initDb() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        uid TEXT PRIMARY KEY,
+        email TEXT,
+        display_name TEXT,
+        photo_url TEXT,
+        role TEXT,
+        specialty TEXT,
+        assigned_station TEXT,
+        phone TEXT,
+        bio TEXT,
+        updated_at TEXT,
+        permission_status TEXT,
+        team_id TEXT,
+        team_name TEXT,
+        is_team_manager BOOLEAN,
+        password_hash TEXT
+      );
 
-  if (hasCredentials || hasADC) {
-    db = getFirestore(appInstance, 'ai-studio-saharaagileworks-d9e7ed38-648e-4c36-bd11-6321a10e795b');
-  } else {
-    console.warn('⚠️ ============================================================');
-    console.warn('⚠️  NO FIREBASE SERVICE ACCOUNT FOUND');
-    console.warn('⚠️  Server-side Firestore writes are DISABLED.');
-    console.warn('⚠️  The client-side SDK will handle all reads/writes directly.');
-    console.warn('⚠️  To enable server-side writes:');
-    console.warn('⚠️    1. Download a service account key from Firebase Console');
-    console.warn('⚠️    2. Save it as service-account.json in the project root');
-    console.warn('⚠️ ============================================================');
-    db = null;
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        code TEXT,
+        status TEXT,
+        priority TEXT,
+        assignee JSONB,
+        due_date TEXT,
+        progress INT,
+        tags JSONB,
+        description TEXT,
+        region TEXT,
+        team_id TEXT,
+        location JSONB,
+        updated_at TEXT,
+        time_spent TEXT,
+        story_id TEXT,
+        project_id TEXT,
+        approval_status TEXT,
+        pending_status TEXT,
+        status_requested_by TEXT,
+        status_requested_at TEXT,
+        attachments JSONB
+      );
+
+      CREATE TABLE IF NOT EXISTS locations (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        region TEXT,
+        coordinates JSONB,
+        status TEXT,
+        task_count INT,
+        crew_count INT,
+        lead TEXT,
+        temperature TEXT,
+        weather_condition TEXT,
+        humidity TEXT,
+        wind_speed TEXT,
+        uv_index TEXT,
+        assigned_member_ids JSONB,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS activities (
+        id TEXT PRIMARY KEY,
+        user_name TEXT,
+        avatar TEXT,
+        action TEXT,
+        target TEXT,
+        time TEXT,
+        type TEXT,
+        detail TEXT,
+        task_id TEXT,
+        requires_manager_approval BOOLEAN,
+        approval_status TEXT,
+        pending_status TEXT,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS team (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        role TEXT,
+        avatar TEXT,
+        email TEXT,
+        status TEXT,
+        current_task TEXT,
+        location TEXT,
+        local_time TEXT,
+        tasks_count INT,
+        performance INT,
+        team_id TEXT,
+        team_name TEXT,
+        permission_status TEXT,
+        requested_role TEXT,
+        requested_permissions JSONB,
+        reviewed_by TEXT,
+        reviewed_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS timeline (
+        id TEXT PRIMARY KEY,
+        phase TEXT,
+        title TEXT,
+        start_date TEXT,
+        end_date TEXT,
+        status TEXT,
+        progress INT,
+        lead TEXT,
+        region TEXT,
+        assigned_member_ids JSONB,
+        description TEXT,
+        budget TEXT,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS stories (
+        id TEXT PRIMARY KEY,
+        project_id TEXT,
+        project_name TEXT,
+        title TEXT,
+        description TEXT,
+        acceptance_criteria JSONB,
+        points INT,
+        status TEXT,
+        assignee_name TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS attendance (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        user_name TEXT,
+        user_avatar TEXT,
+        clock_in_time TEXT,
+        clock_out_time TEXT,
+        total_hours NUMERIC,
+        status TEXT,
+        work_notes TEXT,
+        date TEXT,
+        location_name TEXT,
+        break_minutes INT,
+        overtime_hours NUMERIC,
+        approval_status TEXT,
+        approved_by TEXT,
+        manager_notes TEXT,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS async_jobs (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        type TEXT,
+        status TEXT,
+        progress INT,
+        result_summary TEXT,
+        retry_count INT,
+        error_reason TEXT,
+        created_at TEXT,
+        completed_at TEXT,
+        team_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS invitations (
+        id TEXT PRIMARY KEY,
+        email TEXT,
+        full_name TEXT,
+        role TEXT,
+        is_manager_invite BOOLEAN,
+        team_name TEXT,
+        team_id TEXT,
+        invited_by TEXT,
+        invited_by_email TEXT,
+        created_at TEXT,
+        status TEXT,
+        invite_code TEXT
+      );
+    `);
+    console.log('[neon-db] PostgreSQL tables verified/created successfully.');
+  } catch (err) {
+    console.error('[neon-db] Failed to initialize tables:', err);
+  } finally {
+    client.release();
   }
 }
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sahara_agileworks_secure_jwt_secret_2026';
-
-// --- LOCAL FIREBASE EMULATOR BOOTSTRAP ---
-// The Sahara app depends on a provisioned Firestore + Auth database. When running
-// locally (dev server or the built server), we provision the Firebase Emulator
-// Suite automatically unless FIREBASE_EMULATORS is explicitly set to 'false'.
-let emulatorChild: ChildProcess | null = null;
-
-function isPortOpen(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = net.connect({ host: '127.0.0.1', port });
-    socket.setTimeout(1500);
-    socket.once('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.once('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.once('error', () => resolve(false));
-  });
-}
-
-const EMULATOR_STARTUP_TIMEOUT_MS = Number(process.env.EMULATOR_STARTUP_TIMEOUT_MS) || 90000;
-
-function waitForPort(port: number, timeoutMs = EMULATOR_STARTUP_TIMEOUT_MS): Promise<void> {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const attempt = async () => {
-      if (await isPortOpen(port)) return resolve();
-      if (Date.now() - start > timeoutMs) {
-        return reject(new Error(`Timed out waiting for port ${port}`));
-      }
-      setTimeout(attempt, 500);
-    };
-    attempt();
-  });
-}
-
-async function ensureEmulatorsRunning(): Promise<boolean> {
-  if (await isPortOpen(8080) && await isPortOpen(9099)) {
-    console.log('[sahara] Firebase Emulators already running (Firestore :8080, Auth :9099).');
-    return true;
-  }
-
-  const root = process.cwd();
-  const firebaseBin = path.join(root, 'node_modules', 'firebase-tools', 'lib', 'bin', 'firebase.js');
-  const exportDir = path.join(root, '.firebase', 'emulator-export');
-  let emulatorArgs = [
-    firebaseBin,
-    'emulators:start',
-    '--only',
-    'auth,firestore',
-    '--project',
-    'demo-sahara',
-  ];
-  if (fs.existsSync(exportDir)) {
-    emulatorArgs.push(`--export-on-exit=${exportDir}`);
-    emulatorArgs.push(`--import=${exportDir}`);
-  }
-
-  console.log(`[sahara] Provisioning Firebase Emulators (Firestore + Auth)... (timeout ${EMULATOR_STARTUP_TIMEOUT_MS / 1000}s)`);
-  try {
-    emulatorChild = spawn(process.execPath, emulatorArgs, {
-      cwd: root,
-      stdio: 'ignore',
-      env: { ...process.env, CI: 'true' },
-    });
-    emulatorChild.on('error', (err) => console.warn('[sahara] Emulators failed to launch:', err.message));
-    
-    await waitForPort(8080);
-    await waitForPort(9099);
-    console.log('[sahara] Firebase Emulators are ready (Firestore :8080, Auth :9099).');
-    return true;
-  } catch (err: any) {
-    console.warn('[sahara] Local emulators unavailable or timed out. Operating in fallback mode:', err.message);
-    if (emulatorChild && !emulatorChild.killed) {
-      try { emulatorChild.kill(); } catch (e) {}
-      emulatorChild = null;
-    }
-    return false;
-  }
-}
-
-// Watchdog: if the emulator process is killed unexpectedly, restart it so the app
-// keeps working end-to-end without a manual restart.
-let watchdogStarted = false;
-function startEmulatorWatchdog() {
-  if (watchdogStarted) return;
-  watchdogStarted = true;
-  setInterval(() => {
-    if (process.env.FIREBASE_EMULATORS === 'false') return;
-    isPortOpen(8080).then((open) => {
-      if (!open && emulatorChild) {
-        console.log('[sahara] Firestore emulator is down - attempting restart...');
-        ensureEmulatorsRunning().catch((err) =>
-          console.warn('[sahara] Emulator restart skipped:', err.message)
-        );
-      }
-    });
-  }, 15000);
-}
-
-function shutdown() {
-  if (emulatorChild && !emulatorChild.killed) {
-    try { emulatorChild.kill(); } catch (e) {}
-  }
-  process.exit(0);
-}
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -252,17 +217,6 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
-
-// Middleware guard: block API routes that require Firestore when db is null
-const requiresDb = (req: Request, res: Response, next: NextFunction) => {
-  if (!db) {
-    return res.status(503).json({
-      error: 'Firebase Admin Firestore is not available. No service account credentials found.',
-      fallbackToClient: true
-    });
-  }
-  next();
-};
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -274,7 +228,6 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Verify Firebase Session Cookie
 const authenticateJwt = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
 
@@ -287,186 +240,100 @@ const authenticateJwt = async (req: AuthenticatedRequest, res: Response, next: N
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
-    // If db is not available, derive user info from JWT only
-    if (!db) {
-      (req as AuthenticatedRequest).user = {
-        uid: decoded.uid,
-        userName: decoded.email || 'User',
-        email: decoded.email || '',
-        role: decoded.role || 'Employee',
-        teamId: decoded.teamId || '',
-      };
-      return next();
-    }
+    const uid = decoded.uid;
 
-    // Get user details from Firestore to append role and teamId
-    let userDoc = await db.collection('users').doc(decoded.uid).get();
-    
-    if (process.env.NODE_ENV === 'test' && !userDoc.exists) {
-      // Mock user doc
-      await db.collection('users').doc(decoded.uid).set({
-        role: 'Manager',
-        teamId: 'TEAM-CI',
-        displayName: 'Test Manager CI'
-      });
-      // Mock team doc
-      await db.collection('teams').doc('TEAM-CI').set({
-        id: 'TEAM-CI',
-        name: 'CI Integration Team',
-        managerId: decoded.uid,
-        createdAt: new Date().toISOString()
-      });
-      userDoc = await db.collection('users').doc(decoded.uid).get();
-    }
+    let role = decoded.role || 'Employee';
+    let teamId = decoded.teamId || uid;
+    let userName = decoded.displayName || decoded.email || 'User';
 
-    let role = 'Employee';
-    let teamId = decoded.uid;
-    let userName = decoded.email || '';
-    
-    if (userDoc.exists) {
-      const data = userDoc.data();
-      console.log('[DEBUG] userDoc data:', data);
-      role = data?.role || 'Employee';
-      teamId = data?.teamId || decoded.uid;
-      userName = data?.displayName || userName;
-    } else {
-      console.log('[DEBUG] userDoc does not exist!');
+    try {
+      const result = await pool.query('SELECT * FROM users WHERE uid = $1', [uid]);
+      if (result.rows.length > 0) {
+        const u = result.rows[0];
+        role = u.role || role;
+        teamId = u.team_id || teamId;
+        userName = u.display_name || userName;
+      }
+    } catch (e) {
+      console.warn('[db] Error fetching user profile during auth:', e);
     }
-    console.log('[DEBUG] Assigned role:', role);
 
     req.user = {
-      uid: decoded.uid,
+      uid,
       userName,
       email: decoded.email || '',
       role: role as any,
-      teamId,
+      teamId: teamId || uid,
     };
     next();
   } catch (err) {
     return res.status(401).json({
       success: false,
       error: 'Invalid or expired JWT session token',
-      securityNote: 'HttpOnly cookie verification failed signature check.',
     });
   }
 };
 
-// RBAC Guard: Require Manager or Admin role
 const requireManager = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const role = req.user?.role || 'Employee';
   if (role !== 'Manager' && role !== 'Admin') {
     return res.status(403).json({
       success: false,
       error: 'Access Denied: Manager or Admin privilege required.',
-      details: `Your current assigned role is '${role}'.`,
-      securityPolicy: 'Role-Based Access Control (RBAC) Rule #4',
     });
   }
   next();
 };
 
-// --- REST API ENDPOINTS ---
+// --- AUTH ENDPOINTS ---
 
-app.get('/api/security/notes', (req, res) => {
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  const { idToken, email, uid: reqUid } = req.body;
+  const uid = reqUid || (idToken ? (jwt.decode(idToken) as any)?.uid : null) || `usr-${Date.now()}`;
+  const userEmail = email || `${uid}@guest.sahara.io`;
+
+  const tokenPayload = {
+    uid,
+    email: userEmail,
+    teamId: uid,
+  };
+  const expiresIn = 60 * 60 * 24 * 5;
+  const sessionToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
+
+  res.cookie('token', sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: expiresIn * 1000,
+    path: '/',
+  });
+
   res.json({
     success: true,
-    architecture: 'Full-Stack RBAC & Firebase Session Cookie Authentication',
-    securityConsiderations: [
-      {
-        title: 'HttpOnly Cookies for Firebase Sessions',
-        description: 'Session cookies are transmitted via secure, HttpOnly, SameSite cookies rather than stored in localStorage.',
-        status: 'Active',
-      },
-      {
-        title: 'Role-Based Access Control (RBAC)',
-        description: 'Strict separation between Manager/Admin and Employee capabilities across REST API endpoints.',
-        status: 'Active',
-      },
-    ],
+    message: 'Authenticated successfully with Neon PostgreSQL.',
+    user: { uid, email: userEmail },
+    token: sessionToken,
   });
 });
 
-app.post('/api/auth/login', async (req, res) => {
-  const { idToken } = req.body;
-  if (!idToken) {
-    return res.status(400).json({ success: false, error: 'idToken is required' });
-  }
-
-  try {
-    let decodedIdToken: any;
-    if (process.env.NODE_ENV === 'production') {
-      decodedIdToken = await getAuth(appInstance).verifyIdToken(idToken, true);
-    } else {
-      decodedIdToken = jwt.decode(idToken);
-      if (!decodedIdToken) throw new Error('Invalid JWT format');
-    }
-
-    // 2. Create a secure local JWT for the session
-    const expiresIn = 60 * 60 * 24 * 5; // 5 days in seconds
-    const uid = decodedIdToken.uid || decodedIdToken.sub || decodedIdToken.user_id || 'mock-uid';
-    const email = decodedIdToken.email || 'mock@example.com';
-    const tokenPayload = {
-      uid,
-      email,
-    };
-    const sessionToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn });
-    
-    // 3. Set HttpOnly cookie
-    res.cookie('token', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: expiresIn * 1000,
-      path: '/',
-    });
-
-    res.json({
-      success: true,
-      message: 'Authenticated successfully. HttpOnly cookie set.',
-      user: decodedIdToken,
-    });
-  } catch (err: any) {
-    console.log('[DEBUG] Outer catch caught:', err.message);
-    res.status(401).json({ success: false, error: 'Invalid idToken: ' + err.message });
-  }
-});
-
-app.get('/api/auth/me', authenticateJwt, (req: AuthenticatedRequest, res) => {
+app.get('/api/auth/me', authenticateJwt, (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     user: req.user,
-    cookieSecured: true,
   });
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', (req: Request, res: Response) => {
   res.clearCookie('token', { path: '/' });
-  res.json({ success: true, message: 'Logged out successfully. HttpOnly cookie revoked.' });
+  res.json({ success: true, message: 'Logged out successfully.' });
 });
 
-// Profile Sync for Strict Firestore Rules
-app.post('/api/auth/sync-profile', async (req, res) => {
+app.post('/api/auth/sync-profile', async (req: Request, res: Response) => {
   try {
-    const { idToken, customName, role, teamName, isCreatingTeam, teamId: reqTeamId } = req.body;
-    if (!idToken) return res.status(401).json({ error: 'No idToken provided' });
-
-    // If db is null (no service account credentials), instruct client to handle writes
-    if (!db) {
-      return res.status(503).json({
-        error: 'Firebase Admin credentials not configured on backend. Client-side Firestore SDK will handle writes.',
-        fallbackToClient: true
-      });
-    }
-
-    // Verify token to securely identify the user
-    const decodedToken: any = process.env.NODE_ENV === 'test'
-      ? { uid: idToken.replace('mock-id-token-', ''), email: `${idToken.replace('mock-id-token-', '')}@sahara.io`, name: 'Test User', picture: '' }
-      : await getAuth(appInstance).verifyIdToken(idToken);
-      
-    const uid = decodedToken.uid;
-    const email = decodedToken.email || `${uid}@guest.sahara.io`;
-    const displayName = customName || decodedToken.name || 'Field Operator';
+    const { uid: bodyUid, email: bodyEmail, displayName, role, teamName, isCreatingTeam, teamId: reqTeamId } = req.body;
+    const uid = bodyUid || `usr-${Date.now()}`;
+    const email = bodyEmail || `${uid}@guest.sahara.io`;
+    const name = displayName || 'Field Operator';
     
     let assignedRole = role || 'Field Technician';
     let teamId = reqTeamId || uid;
@@ -480,371 +347,734 @@ app.post('/api/auth/sync-profile', async (req, res) => {
       isManagerRole = true;
       initialPermission = 'approved';
       assignedTeam = teamName || 'New Team';
-
-      // Create centralized teams document
-      await db.collection('teams').doc(teamId).set({
-        id: teamId,
-        name: assignedTeam,
-        managerId: uid,
-        createdAt: new Date().toISOString()
-      });
-    } else {
-      // Look for an invitation for this email
-      const invSnap = await db.collection('invitations')
-        .where('email', '==', email.toLowerCase().trim())
-        .where('status', '==', 'pending')
-        .get();
-        
-      if (!invSnap.empty) {
-        const inviteDoc = invSnap.docs[0];
-        const matchedInvite = inviteDoc.data();
-        teamId = matchedInvite.teamId;
-        assignedRole = matchedInvite.role;
-        initialPermission = 'approved';
-        assignedTeam = matchedInvite.teamName;
-        
-        // Mark invitation as accepted
-        await inviteDoc.ref.update({
-          status: 'accepted',
-          acceptedAt: new Date().toISOString()
-        });
-      } else {
-        // Fallback: try to find user in team roster directly
-        const teamSnap = await db.collection('team').get();
-        teamSnap.docs.forEach((d: any) => {
-          const m = d.data();
-          if (m.email && m.email.toLowerCase().trim() === email.toLowerCase().trim()) {
-            if (m.teamId) {
-              teamId = m.teamId;
-            }
-          }
-        });
-      }
     }
 
-    const newProfile = {
+    const photoURL = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+
+    await pool.query(
+      `INSERT INTO users (uid, email, display_name, photo_url, role, permission_status, team_name, team_id, is_team_manager, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       ON CONFLICT (uid) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         role = EXCLUDED.role,
+         team_name = EXCLUDED.team_name,
+         team_id = EXCLUDED.team_id,
+         is_team_manager = EXCLUDED.is_team_manager,
+         updated_at = NOW()`,
+      [uid, email, name, photoURL, assignedRole, initialPermission, assignedTeam, teamId, isManagerRole]
+    );
+
+    const teamMemberId = `TM-${uid.slice(0, 8)}`;
+    await pool.query(
+      `INSERT INTO team (id, name, email, role, avatar, status, current_task, location, local_time, tasks_count, performance, team_name, team_id, permission_status, requested_role)
+       VALUES ($1, $2, $3, $4, $5, 'active', $6, 'Al-Kufra Site A', 'UTC+2 (Sahara)', 0, 92, $7, $8, $9, $10)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         role = EXCLUDED.role,
+         team_name = EXCLUDED.team_name,
+         team_id = EXCLUDED.team_id`,
+      [
+        teamMemberId,
+        name,
+        email,
+        assignedRole,
+        photoURL,
+        isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
+        assignedTeam,
+        teamId,
+        initialPermission,
+        assignedRole
+      ]
+    );
+
+    const profile = {
       uid,
       email,
-      displayName,
-      photoURL: decodedToken.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      displayName: name,
+      photoURL,
       role: assignedRole,
-      specialty: '',
-      assignedStation: '',
-      phone: '',
-      bio: '',
-      updatedAt: new Date().toISOString(),
       permissionStatus: initialPermission,
       teamName: assignedTeam,
-      teamId: teamId,
+      teamId,
       isTeamManager: isManagerRole,
     };
 
-    // Use admin SDK to bypass client-side rules restriction
-    await db.collection('users').doc(uid).set(newProfile);
-
-    // Create team member document
-    const teamMemberId = `TM-${uid.slice(0, 8)}`;
-    await db.collection('team').doc(teamMemberId).set(
-      {
-        id: teamMemberId,
-        name: newProfile.displayName,
-        email: newProfile.email,
-        role: assignedRole,
-        avatar: newProfile.photoURL,
-        status: 'active',
-        currentTask: isManagerRole ? 'Managing Sector Operations' : 'Awaiting Mission Dispatch',
-        location: 'Al-Kufra Site A',
-        localTime: 'UTC+2 (Sahara)',
-        tasksCount: 0,
-        performance: 92,
-        teamName: assignedTeam,
-        teamId: teamId,
-        permissionStatus: initialPermission,
-        requestedRole: assignedRole,
-      },
-      { merge: true }
-    );
-
-    res.status(200).json({ success: true, profile: newProfile });
-  } catch (error: any) {
-    console.error('Sync profile error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json({ success: true, profile });
+  } catch (err: any) {
+    console.error('[auth/sync-profile] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
-});
+// --- LOCATIONS (PROJECTS) API ---
 
-// Projects API
-app.get('/api/projects', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
+app.get('/api/projects', async (req: Request, res: Response) => {
   try {
-    let query: Query = db.collection('locations');
-    if (req.user?.role !== 'Admin') {
-      query = query.where('teamId', '==', req.user?.teamId);
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM locations WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM locations');
     }
-    const snapshot = await query.get();
-    const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const projects = result.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      region: r.region,
+      coordinates: r.coordinates,
+      status: r.status,
+      taskCount: r.task_count,
+      crewCount: r.crew_count,
+      lead: r.lead,
+      temperature: r.temperature,
+      weatherCondition: r.weather_condition,
+      humidity: r.humidity,
+      windSpeed: r.wind_speed,
+      uvIndex: r.uv_index,
+      assignedMemberIds: r.assigned_member_ids,
+      teamId: r.team_id,
+    }));
     res.json({ success: true, count: projects.length, data: projects });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/projects', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
-  const { name, region, lead } = req.body;
-  if (!name || !region) {
-    return res.status(400).json({ success: false, error: 'Project name and region required' });
-  }
-  const newProj = {
-    name,
-    region,
-    status: 'active',
-    crewCount: 4,
-    taskCount: 0,
-    lead: lead || req.user?.userName || 'Manager',
-    teamId: req.user?.teamId || '',
-    createdAt: new Date().toISOString(),
-  };
+app.post('/api/projects', async (req: Request, res: Response) => {
   try {
-    const docRef = await db.collection('locations').add(newProj);
-    res.status(201).json({ success: true, data: { id: docRef.id, ...newProj } });
+    const p = req.body;
+    const id = p.id || `LOC-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO locations (id, name, region, coordinates, status, task_count, crew_count, lead, temperature, weather_condition, humidity, wind_speed, uv_index, assigned_member_ids, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         region = EXCLUDED.region,
+         coordinates = EXCLUDED.coordinates,
+         status = EXCLUDED.status,
+         task_count = EXCLUDED.task_count,
+         crew_count = EXCLUDED.crew_count,
+         lead = EXCLUDED.lead,
+         temperature = EXCLUDED.temperature,
+         team_id = EXCLUDED.team_id`,
+      [
+        id,
+        p.name,
+        p.region,
+        JSON.stringify(p.coordinates || { x: 50, y: 50, lat: 23.5, lng: 12.5 }),
+        p.status || 'planned',
+        p.taskCount || 0,
+        p.crewCount || 4,
+        p.lead || 'Lead',
+        p.temperature || '35°C',
+        p.weatherCondition || 'Sunny',
+        p.humidity || '15%',
+        p.windSpeed || '12 km/h',
+        p.uvIndex || 'High',
+        JSON.stringify(p.assignedMemberIds || []),
+        p.teamId || ''
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...p, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// User Stories API
-app.get('/api/stories', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { projectId } = req.query;
-    let query: Query = db.collection('stories');
-    if (req.user?.role !== 'Admin') {
-      query = query.where('teamId', '==', req.user?.teamId);
-    }
-    if (projectId) {
-      query = query.where('projectId', '==', projectId);
-    }
-    const snapshot = await query.get();
-    const stories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json({ success: true, count: stories.length, data: stories });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// --- TASKS API ---
 
-app.post('/api/stories', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
-  const { projectId, title, description, points, assigneeName } = req.body;
-  if (!projectId || !title) {
-    return res.status(400).json({ success: false, error: 'projectId and title are required' });
-  }
-  const newStory = {
-    projectId,
-    title,
-    description: description || '',
-    points: Number(points) || 3,
-    status: 'in_progress',
-    assigneeName: assigneeName || 'Unassigned',
-    teamId: req.user?.teamId || '',
-    createdAt: new Date().toISOString(),
-  };
+app.get('/api/tasks', async (req: Request, res: Response) => {
   try {
-    const docRef = await db.collection('stories').add(newStory);
-    res.status(201).json({ success: true, data: { id: docRef.id, ...newStory } });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Tasks API
-app.get('/api/tasks', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { storyId } = req.query;
-    let query: Query = db.collection('tasks');
-    if (req.user?.role !== 'Admin') {
-      query = query.where('teamId', '==', req.user?.teamId);
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM tasks WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM tasks');
     }
-    if (storyId) {
-      query = query.where('storyId', '==', storyId);
-    }
-    const snapshot = await query.get();
-    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const tasks = result.rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      code: r.code,
+      status: r.status,
+      priority: r.priority,
+      assignee: r.assignee,
+      dueDate: r.due_date,
+      progress: r.progress,
+      tags: r.tags,
+      description: r.description,
+      region: r.region,
+      teamId: r.team_id,
+      location: r.location,
+      updatedAt: r.updated_at,
+      timeSpent: r.time_spent,
+      storyId: r.story_id,
+      projectId: r.project_id,
+      approvalStatus: r.approval_status,
+      pendingStatus: r.pending_status,
+      statusRequestedBy: r.status_requested_by,
+      statusRequestedAt: r.status_requested_at,
+      attachments: r.attachments
+    }));
     res.json({ success: true, count: tasks.length, data: tasks });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/tasks', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  const { title, storyId, priority } = req.body;
-  if (!title) {
-    return res.status(400).json({ success: false, error: 'Task title is required' });
-  }
-  const newTask = {
-    code: `SAH-${Math.floor(100 + Math.random() * 900)}`,
-    title,
-    status: 'todo',
-    storyId: storyId || null,
-    priority: priority || 'medium',
-    assigneeName: req.user?.userName || 'Operator',
-    teamId: req.user?.teamId || '',
-    createdAt: new Date().toISOString(),
-  };
+app.post('/api/tasks', async (req: Request, res: Response) => {
   try {
-    const docRef = await db.collection('tasks').add(newTask);
-    res.status(201).json({ success: true, data: { id: docRef.id, ...newTask } });
+    const t = req.body;
+    const id = t.id || `TASK-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO tasks (id, title, code, status, priority, assignee, due_date, progress, tags, description, region, team_id, location, updated_at, time_spent, story_id, project_id, approval_status, pending_status, status_requested_by, status_requested_at, attachments)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         status = EXCLUDED.status,
+         priority = EXCLUDED.priority,
+         assignee = EXCLUDED.assignee,
+         due_date = EXCLUDED.due_date,
+         progress = EXCLUDED.progress,
+         tags = EXCLUDED.tags,
+         description = EXCLUDED.description,
+         region = EXCLUDED.region,
+         team_id = EXCLUDED.team_id,
+         location = EXCLUDED.location,
+         updated_at = EXCLUDED.updated_at,
+         attachments = EXCLUDED.attachments`,
+      [
+        id,
+        t.title,
+        t.code || `SAH-${Math.floor(100 + Math.random() * 900)}`,
+        t.status || 'todo',
+        t.priority || 'medium',
+        JSON.stringify(t.assignee || { name: 'Unassigned', avatar: '', role: '' }),
+        t.dueDate || '2026-12-31',
+        t.progress || 0,
+        JSON.stringify(t.tags || []),
+        t.description || '',
+        t.region || '',
+        t.teamId || '',
+        JSON.stringify(t.location || { lat: 0, lng: 0, label: '' }),
+        t.updatedAt || new Date().toISOString(),
+        t.timeSpent || '0h',
+        t.storyId || null,
+        t.projectId || null,
+        t.approvalStatus || null,
+        t.pendingStatus || null,
+        t.statusRequestedBy || null,
+        t.statusRequestedAt || null,
+        JSON.stringify(t.attachments || [])
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...t, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.patch('/api/tasks/:id/status', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
+app.patch('/api/tasks/:id/status', async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
   try {
-    const docRef = db.collection('tasks').doc(id);
-    await docRef.update({ status, updatedAt: new Date().toISOString() });
-    const updatedDoc = await docRef.get();
-    res.json({ success: true, data: { id: updatedDoc.id, ...updatedDoc.data() } });
+    await pool.query('UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2', [status, id]);
+    res.json({ success: true, data: { id, status } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Attendance API
-app.get('/api/attendance', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  const role = req.user?.role || 'Employee';
-  const teamId = req.user?.teamId;
-  
+// --- ACTIVITIES API ---
+
+app.get('/api/activities', async (req: Request, res: Response) => {
   try {
-    let query: Query = db.collection('attendance');
-    if (role !== 'Admin') {
-      query = query.where('teamId', '==', teamId);
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM activities WHERE team_id = $1 ORDER BY id DESC', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM activities ORDER BY id DESC');
     }
-    
-    // If employee, return only their logs
-    if (role !== 'Manager' && role !== 'Admin') {
-      query = query.where('userId', '==', req.user?.uid);
-    }
-    
-    const snapshot = await query.get();
-    const attendance = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json({ success: true, count: attendance.length, data: attendance, roleView: role });
+    const activities = result.rows.map(r => ({
+      id: r.id,
+      user: r.user_name,
+      avatar: r.avatar,
+      action: r.action,
+      target: r.target,
+      time: r.time,
+      type: r.type,
+      detail: r.detail,
+      taskId: r.task_id,
+      requiresManagerApproval: r.requires_manager_approval,
+      approvalStatus: r.approval_status,
+      pendingStatus: r.pending_status,
+      teamId: r.team_id,
+    }));
+    res.json({ success: true, count: activities.length, data: activities });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/attendance/clock-in', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  const { locationName } = req.body;
-  const now = new Date();
-  const newLog = {
-    userId: req.user?.uid,
-    userName: req.user?.userName,
-    clockInTime: now.toISOString(),
-    status: 'clocked_in',
-    date: now.toISOString().split('T')[0],
-    locationName: locationName || 'Base Site',
-    approvalStatus: 'pending' as const,
-    teamId: req.user?.teamId || '',
-  };
+app.post('/api/activities', async (req: Request, res: Response) => {
   try {
-    const docRef = await db.collection('attendance').add(newLog);
-    res.status(201).json({ success: true, data: { id: docRef.id, ...newLog } });
+    const a = req.body;
+    const id = a.id || `ACT-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO activities (id, user_name, avatar, action, target, time, type, detail, task_id, requires_manager_approval, approval_status, pending_status, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (id) DO UPDATE SET
+         action = EXCLUDED.action,
+         target = EXCLUDED.target,
+         detail = EXCLUDED.detail`,
+      [
+        id,
+        a.user || 'User',
+        a.avatar || '',
+        a.action || '',
+        a.target || '',
+        a.time || 'Just now',
+        a.type || 'status',
+        a.detail || '',
+        a.taskId || null,
+        a.requiresManagerApproval || false,
+        a.approvalStatus || null,
+        a.pendingStatus || null,
+        a.teamId || ''
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...a, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/attendance/clock-out', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  const { id, workNotes } = req.body;
+// --- TEAM API ---
+
+app.get('/api/team', async (req: Request, res: Response) => {
   try {
-    const docRef = db.collection('attendance').doc(id);
-    const doc = await docRef.get();
-    if (!doc.exists) {
-      return res.status(404).json({ success: false, error: 'Attendance log not found' });
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM team WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM team');
     }
-    const data = doc.data();
-    if (data?.userId !== req.user?.uid) {
-      return res.status(403).json({ success: false, error: 'Unauthorized to clock out this log' });
-    }
-    
-    const now = new Date();
-    const startTime = new Date(data?.clockInTime).getTime();
-    const hours = Number(((now.getTime() - startTime) / (1000 * 60 * 60)).toFixed(2));
-    
-    await docRef.update({
-      clockOutTime: now.toISOString(),
-      totalHours: hours,
-      status: 'clocked_out',
-      workNotes: workNotes || 'Shift completed'
-    });
-    
-    const updated = await docRef.get();
-    res.json({ success: true, data: { id: updated.id, ...updated.data() } });
+    const team = result.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      role: r.role,
+      avatar: r.avatar,
+      email: r.email,
+      status: r.status,
+      currentTask: r.current_task,
+      location: r.location,
+      localTime: r.local_time,
+      tasksCount: r.tasks_count,
+      performance: r.performance,
+      teamId: r.team_id,
+      teamName: r.team_name,
+      permissionStatus: r.permission_status,
+      requestedRole: r.requested_role,
+      requestedPermissions: r.requested_permissions,
+      reviewedBy: r.reviewed_by,
+      reviewedAt: r.reviewed_at,
+    }));
+    res.json({ success: true, count: team.length, data: team });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/attendance/approve', authenticateJwt, requiresDb, requireManager, async (req: AuthenticatedRequest, res) => {
-  const { logId, action, managerNotes } = req.body;
+app.post('/api/team', async (req: Request, res: Response) => {
   try {
-    const docRef = db.collection('attendance').doc(logId);
-    const doc = await docRef.get();
-    if (!doc.exists) return res.status(404).json({ success: false, error: 'Log not found' });
-    
-    const updates: any = {
-      approvalStatus: action === 'flag' ? 'flagged' : 'approved',
-      approvedBy: req.user?.userName || 'Manager'
-    };
-    if (managerNotes) {
-      updates.workNotes = `${doc.data()?.workNotes || ''} [Manager Note: ${managerNotes}]`;
-    }
-    
-    await docRef.update(updates);
-    const updated = await docRef.get();
-    res.json({ success: true, data: { id: updated.id, ...updated.data() } });
+    const m = req.body;
+    const id = m.id || `TM-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO team (id, name, role, avatar, email, status, current_task, location, local_time, tasks_count, performance, team_id, team_name, permission_status, requested_role, requested_permissions, reviewed_by, reviewed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         role = EXCLUDED.role,
+         avatar = EXCLUDED.avatar,
+         email = EXCLUDED.email,
+         status = EXCLUDED.status,
+         current_task = EXCLUDED.current_task,
+         location = EXCLUDED.location,
+         tasks_count = EXCLUDED.tasks_count,
+         performance = EXCLUDED.performance,
+         team_id = EXCLUDED.team_id,
+         team_name = EXCLUDED.team_name,
+         permission_status = EXCLUDED.permission_status`,
+      [
+        id,
+        m.name,
+        m.role || 'Field Technician',
+        m.avatar || '',
+        m.email || '',
+        m.status || 'active',
+        m.currentTask || 'Awaiting Mission Dispatch',
+        m.location || 'Al-Kufra Site A',
+        m.localTime || 'UTC+2 (Sahara)',
+        m.tasksCount || 0,
+        m.performance || 90,
+        m.teamId || '',
+        m.teamName || 'Sahara Team',
+        m.permissionStatus || 'approved',
+        m.requestedRole || null,
+        JSON.stringify(m.requestedPermissions || []),
+        m.reviewedBy || null,
+        m.reviewedAt || null,
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...m, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Async Background Processing API
-app.get('/api/async-jobs', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
+// --- TIMELINE API ---
+
+app.get('/api/timeline', async (req: Request, res: Response) => {
   try {
-    let query: Query = db.collection('async_jobs');
-    if (req.user?.role !== 'Admin') {
-      query = query.where('teamId', '==', req.user?.teamId);
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM timeline WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM timeline');
     }
-    const snapshot = await query.get();
-    const jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const timeline = result.rows.map(r => ({
+      id: r.id,
+      phase: r.phase,
+      title: r.title,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      status: r.status,
+      progress: r.progress,
+      lead: r.lead,
+      region: r.region,
+      assignedMemberIds: r.assigned_member_ids,
+      description: r.description,
+      budget: r.budget,
+      teamId: r.team_id,
+    }));
+    res.json({ success: true, count: timeline.length, data: timeline });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/timeline', async (req: Request, res: Response) => {
+  try {
+    const tm = req.body;
+    const id = tm.id || `PH-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO timeline (id, phase, title, start_date, end_date, status, progress, lead, region, assigned_member_ids, description, budget, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         phase = EXCLUDED.phase,
+         start_date = EXCLUDED.start_date,
+         end_date = EXCLUDED.end_date,
+         status = EXCLUDED.status,
+         progress = EXCLUDED.progress,
+         lead = EXCLUDED.lead,
+         region = EXCLUDED.region,
+         team_id = EXCLUDED.team_id`,
+      [
+        id,
+        tm.phase || 'Phase 1',
+        tm.title || 'Milestone',
+        tm.startDate || '2026-01-01',
+        tm.endDate || '2026-12-31',
+        tm.status || 'upcoming',
+        tm.progress || 0,
+        tm.lead || 'Lead',
+        tm.region || 'Region',
+        JSON.stringify(tm.assignedMemberIds || []),
+        tm.description || '',
+        tm.budget || '$0',
+        tm.teamId || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...tm, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- STORIES API ---
+
+app.get('/api/stories', async (req: Request, res: Response) => {
+  try {
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM stories WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM stories');
+    }
+    const stories = result.rows.map(r => ({
+      id: r.id,
+      projectId: r.project_id,
+      projectName: r.project_name,
+      title: r.title,
+      description: r.description,
+      acceptanceCriteria: r.acceptance_criteria,
+      points: r.points,
+      status: r.status,
+      assigneeName: r.assignee_name,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      teamId: r.team_id,
+    }));
+    res.json({ success: true, count: stories.length, data: stories });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/stories', async (req: Request, res: Response) => {
+  try {
+    const s = req.body;
+    const id = s.id || `US-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO stories (id, project_id, project_name, title, description, acceptance_criteria, points, status, assignee_name, created_at, updated_at, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         description = EXCLUDED.description,
+         points = EXCLUDED.points,
+         status = EXCLUDED.status,
+         assignee_name = EXCLUDED.assignee_name,
+         updated_at = EXCLUDED.updated_at,
+         team_id = EXCLUDED.team_id`,
+      [
+        id,
+        s.projectId || '',
+        s.projectName || '',
+        s.title || '',
+        s.description || '',
+        JSON.stringify(s.acceptanceCriteria || []),
+        s.points || 3,
+        s.status || 'in_progress',
+        s.assigneeName || 'Unassigned',
+        s.createdAt || new Date().toISOString(),
+        s.updatedAt || new Date().toISOString(),
+        s.teamId || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...s, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- ATTENDANCE API ---
+
+app.get('/api/attendance', async (req: Request, res: Response) => {
+  try {
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM attendance WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM attendance');
+    }
+    const attendance = result.rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      userAvatar: r.user_avatar,
+      clockInTime: r.clock_in_time,
+      clockOutTime: r.clock_out_time,
+      totalHours: r.total_hours ? parseFloat(r.total_hours) : undefined,
+      status: r.status,
+      workNotes: r.work_notes,
+      date: r.date,
+      locationName: r.location_name,
+      breakMinutes: r.break_minutes,
+      overtimeHours: r.overtime_hours ? parseFloat(r.overtime_hours) : undefined,
+      approvalStatus: r.approval_status,
+      approvedBy: r.approved_by,
+      managerNotes: r.manager_notes,
+      teamId: r.team_id,
+    }));
+    res.json({ success: true, count: attendance.length, data: attendance });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/attendance', async (req: Request, res: Response) => {
+  try {
+    const a = req.body;
+    const id = a.id || `ATT-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO attendance (id, user_id, user_name, user_avatar, clock_in_time, clock_out_time, total_hours, status, work_notes, date, location_name, break_minutes, overtime_hours, approval_status, approved_by, manager_notes, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       ON CONFLICT (id) DO UPDATE SET
+         clock_out_time = EXCLUDED.clock_out_time,
+         total_hours = EXCLUDED.total_hours,
+         status = EXCLUDED.status,
+         work_notes = EXCLUDED.work_notes,
+         overtime_hours = EXCLUDED.overtime_hours,
+         approval_status = EXCLUDED.approval_status,
+         approved_by = EXCLUDED.approved_by,
+         manager_notes = EXCLUDED.manager_notes`,
+      [
+        id,
+        a.userId || '',
+        a.userName || '',
+        a.userAvatar || '',
+        a.clockInTime || new Date().toISOString(),
+        a.clockOutTime || null,
+        a.totalHours || null,
+        a.status || 'clocked_in',
+        a.workNotes || '',
+        a.date || new Date().toISOString().split('T')[0],
+        a.locationName || 'Sahara Site',
+        a.breakMinutes || 0,
+        a.overtimeHours || 0,
+        a.approvalStatus || 'pending',
+        a.approvedBy || null,
+        a.managerNotes || null,
+        a.teamId || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...a, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- ASYNC JOBS API ---
+
+app.get('/api/async-jobs', async (req: Request, res: Response) => {
+  try {
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM async_jobs WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM async_jobs');
+    }
+    const jobs = result.rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      type: r.type,
+      status: r.status,
+      progress: r.progress,
+      resultSummary: r.result_summary,
+      retryCount: r.retry_count,
+      errorReason: r.error_reason,
+      createdAt: r.created_at,
+      completedAt: r.completed_at,
+      teamId: r.team_id,
+    }));
     res.json({ success: true, count: jobs.length, data: jobs });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/async-jobs', authenticateJwt, requiresDb, async (req: AuthenticatedRequest, res) => {
-  const { title, type } = req.body;
-  const newJob = {
-    title: title || 'Sprint Telemetry Export',
-    type: type || 'sprint_summary',
-    status: 'completed',
-    progress: 100,
-    retryCount: 0,
-    createdAt: new Date().toISOString(),
-    teamId: req.user?.teamId || '',
-  };
+app.post('/api/async-jobs', async (req: Request, res: Response) => {
   try {
-    const docRef = await db.collection('async_jobs').add(newJob);
-    res.status(202).json({ success: true, message: 'Job accepted', data: { id: docRef.id, ...newJob } });
+    const j = req.body;
+    const id = j.id || `JOB-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO async_jobs (id, title, type, status, progress, result_summary, retry_count, error_reason, created_at, completed_at, team_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status,
+         progress = EXCLUDED.progress,
+         result_summary = EXCLUDED.result_summary,
+         completed_at = EXCLUDED.completed_at`,
+      [
+        id,
+        j.title || 'Export Job',
+        j.type || 'sprint_summary',
+        j.status || 'completed',
+        j.progress || 100,
+        j.resultSummary || 'Successfully generated',
+        j.retryCount || 0,
+        j.errorReason || null,
+        j.createdAt || new Date().toISOString(),
+        j.completedAt || new Date().toISOString(),
+        j.teamId || '',
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...j, id } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// --- REDIS BACKGROUND JOB QUEUE & DLQ REST API ENDPOINTS ---
+// --- INVITATIONS API ---
+
+app.get('/api/invitations', async (req: Request, res: Response) => {
+  try {
+    const teamId = (req.query.teamId as string) || '';
+    let result;
+    if (teamId) {
+      result = await pool.query('SELECT * FROM invitations WHERE team_id = $1', [teamId]);
+    } else {
+      result = await pool.query('SELECT * FROM invitations');
+    }
+    const invites = result.rows.map(r => ({
+      id: r.id,
+      email: r.email,
+      fullName: r.full_name,
+      role: r.role,
+      isManagerInvite: r.is_manager_invite,
+      teamName: r.team_name,
+      teamId: r.team_id,
+      invitedBy: r.invited_by,
+      invitedByEmail: r.invited_by_email,
+      createdAt: r.created_at,
+      status: r.status,
+      inviteCode: r.invite_code,
+    }));
+    res.json({ success: true, count: invites.length, data: invites });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/invitations', async (req: Request, res: Response) => {
+  try {
+    const inv = req.body;
+    const id = inv.id || `INV-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO invitations (id, email, full_name, role, is_manager_invite, team_name, team_id, invited_by, invited_by_email, created_at, status, invite_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status`,
+      [
+        id,
+        inv.email || '',
+        inv.fullName || '',
+        inv.role || 'Field Technician',
+        inv.isManagerInvite || false,
+        inv.teamName || 'Sahara Team',
+        inv.teamId || '',
+        inv.invitedBy || 'Manager',
+        inv.invitedByEmail || '',
+        inv.createdAt || new Date().toISOString(),
+        inv.status || 'pending',
+        inv.inviteCode || `INV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      ]
+    );
+    res.status(201).json({ success: true, data: { ...inv, id } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- REDIS / BACKGROUND QUEUE API ---
+
 app.get('/api/queue/stats', (req, res) => {
   res.json({ success: true, data: globalJobQueue.getStats() });
 });
@@ -864,34 +1094,15 @@ app.get('/api/queue/dlq', (req, res) => {
   res.json({ success: true, count: dlqJobs.length, data: dlqJobs });
 });
 
-app.post('/api/queue/dlq/:id/retry', authenticateJwt, (req, res) => {
-  const jobId = req.params.id;
-  const requeued = globalJobQueue.retryDlqJob(jobId);
-  if (!requeued) {
-    return res.status(404).json({ success: false, error: `Job '${jobId}' not found in DLQ` });
-  }
-  res.json({ success: true, data: requeued });
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', database: 'Neon PostgreSQL', timestamp: new Date().toISOString() });
 });
 
-app.get('/api/queue/report/latest', (req, res) => {
-  const report = globalJobQueue.getLatestReport();
-  if (!report) {
-    return res.status(404).json({ success: false, error: 'No generated productivity report available' });
-  }
-  res.json({ success: true, data: report });
-});
+// --- VITE MIDDLEWARE & SERVER STARTUP ---
 
-// --- VITE MIDDLEWARE & STATIC SERVING ---
 async function startServer() {
-  if (process.env.FIREBASE_EMULATORS !== 'false') {
-    const emulatorsReady = await ensureEmulatorsRunning();
-    process.env.VITE_USE_EMULATORS = emulatorsReady ? 'true' : 'false';
-    if (emulatorsReady) {
-      startEmulatorWatchdog();
-    } else {
-      console.warn('[sahara] Using cloud Firestore because local emulators are unavailable.');
-    }
-  }
+  await initDb();
+
   if (process.env.NODE_ENV !== 'production') {
     const viteModule = 'vite';
     const { createServer: createViteServer } = await import(viteModule);
@@ -909,7 +1120,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[sahara] Server running with Neon PostgreSQL on http://localhost:${PORT}`);
   });
 }
 
